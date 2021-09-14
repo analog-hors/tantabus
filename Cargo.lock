@@ -63,6 +63,8 @@ dependencies = [
 [[package]]
 name = "cozy-chess"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bdc635553eee8047a46b9f530bc96ea7d8a984d316f5a250047757fccb3fc8e"
 dependencies = [
  "cozy-chess-types",
 ]
@@ -70,6 +72,8 @@ dependencies = [
 [[package]]
 name = "cozy-chess-types"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd11d14a8e59b87a4fc2e0ccaf9867652600245fbdf1274a55a2a1a05cf13c1a"
 
 [[package]]
 name = "digest"
