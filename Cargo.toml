@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "engine",
+    "uci"
+]
+
+[profile.release]
+lto = "thin"
+debug = true
