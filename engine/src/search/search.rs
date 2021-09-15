@@ -105,6 +105,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 board.pieces(Piece::Rook) |
                 board.pieces(Piece::Bishop) |
                 board.pieces(Piece::Queen);
+            let in_check = !board.checkers().is_empty();
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
@@ -132,19 +133,25 @@ impl<H: SearchHandler> Searcher<'_, H> {
             for (i, mv) in moves.enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
+                let gives_check = !child.checkers().is_empty();
+                let quiet = move_is_quiet(mv, &board);
 
                 let mut child_window = if i > 0 {
                     window.null_window_alpha()
                 } else {
                     window
                 };
+                let mut reduction = 0;
+                if i >= 3 && depth > 3 && quiet && !in_check && !gives_check {
+                    reduction += 1;
+                }
                 let mut eval = -self.search_node::<node::Normal>(
                     &child,
-                    depth - 1,
+                    (depth - 1).saturating_sub(reduction),
                     ply_index + 1,
                     -child_window
                 )?;
-                if child_window != window && window.contains(eval) {
+                if (child_window != window || reduction > 0) && window.contains(eval) {
                     child_window = window;
                     eval = -self.search_node::<node::Normal>(
                         &child,
