@@ -129,15 +129,30 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 pv_move,
                 self.killers[ply_index as usize].clone()
             );
-            for mv in moves {
+            for (i, mv) in moves.enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
-                let eval = -self.search_node::<node::Normal>(
+
+                let mut child_window = if i > 0 {
+                    window.null_window_alpha()
+                } else {
+                    window
+                };
+                let mut eval = -self.search_node::<node::Normal>(
                     &child,
                     depth - 1,
                     ply_index + 1,
-                    -window
+                    -child_window
                 )?;
+                if child_window != window && window.contains(eval) {
+                    child_window = window;
+                    eval = -self.search_node::<node::Normal>(
+                        &child,
+                        depth - 1,
+                        ply_index + 1,
+                        -child_window
+                    )?;
+                }
 
                 if eval > best_eval {
                     best_eval = eval;
