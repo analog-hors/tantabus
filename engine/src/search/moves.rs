@@ -9,7 +9,7 @@ use super::search::{KillerEntry, Searcher};
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
     LosingCapture(Eval),
-    Quiet,
+    Quiet(u32),
     Killer,
     Capture(Eval),
     Pv
@@ -40,7 +40,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let score = if killers.contains(&mv) {
                     MoveScore::Killer
                 } else {
-                    MoveScore::Quiet
+                    let history = self.history_table
+                        [board.side_to_move() as usize]
+                        [board.piece_on(mv.from).unwrap() as usize]
+                        [mv.to as usize];
+                    MoveScore::Quiet(history)
                 };
                 move_list.push((mv, score));
             }

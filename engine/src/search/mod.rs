@@ -91,6 +91,7 @@ impl<H: SearchHandler> Engine<H> {
                 search_result: None,
                 history,
                 killers: vec![ArrayVec::new(); self.options.max_depth.get() as usize],
+                history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM],
                 stats: SearchStats::default()
             };
 

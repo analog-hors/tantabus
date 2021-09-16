@@ -19,12 +19,14 @@ pub struct SearchSharedState<H> {
 }
 
 pub(crate) type KillerEntry = ArrayVec<Move, 2>;
+pub(crate) type HistoryTable = [[[u32; Square::NUM]; Piece::NUM]; Color::NUM];
 
 pub struct Searcher<'s, H> {
     pub shared: &'s mut SearchSharedState<H>,
     pub search_result: Option<Move>,
     pub history: Vec<u64>,
     pub killers: Vec<KillerEntry>,
+    pub history_table: HistoryTable,
     pub stats: SearchStats
 }
 
@@ -174,6 +176,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                             killers.remove(0);
                         }
                         killers.push(mv);
+                        self.history_table
+                            [board.side_to_move() as usize]
+                            [board.piece_on(mv.from).unwrap() as usize]
+                            [mv.to as usize]
+                            += depth as u32 * depth as u32;
                     }
                     break;
                 }
