@@ -58,12 +58,19 @@ impl<H: SearchHandler> Searcher<'_, H> {
     pub fn search_node<Node: NodeType>(
         &mut self,
         board: &Board,
-        depth: u8,
+        mut depth: u8,
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
         self.history.push(board.hash());
         let result = (|| {
+            let in_check = !board.checkers().is_empty();
+
+            if in_check {
+                //Don't enter quiescence while in check
+                depth += 1;
+            }
+
             if depth == 0 {
                 return Ok(self.quiescence(board, ply_index, window));
             }
@@ -107,7 +114,6 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 board.pieces(Piece::Rook) |
                 board.pieces(Piece::Bishop) |
                 board.pieces(Piece::Queen);
-            let in_check = !board.checkers().is_empty();
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
