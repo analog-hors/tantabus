@@ -306,9 +306,12 @@ fn main() {
                     for &mv in moves {
                         current_pos.play_unchecked(mv);
                     }
-                    let principal_variation = result.principal_variation.iter()
-                        .map(|mv| mv.uci_move_into(&current_pos, options.options.chess960))
-                        .collect();
+                    let mut principal_variation = Vec::new();
+                    for mv in result.principal_variation {
+                        let uci_mv = mv.uci_move_into(&current_pos, options.options.chess960);
+                        principal_variation.push(uci_mv);
+                        current_pos.play_unchecked(mv);
+                    }
                     send_message(UciMessage::Info(vec![
                         match result.eval.kind() {
                             EvalKind::Centipawn(cp) => UciInfoAttribute::from_centipawns(cp as i32),
