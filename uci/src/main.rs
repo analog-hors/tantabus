@@ -301,6 +301,14 @@ fn main() {
                         result.used_cache_entries
                         * 1000
                         / result.total_cache_entries;
+                    let (board, moves) = position.as_ref().unwrap();
+                    let mut current_pos = board.clone();
+                    for &mv in moves {
+                        current_pos.play_unchecked(mv);
+                    }
+                    let principal_variation = result.principal_variation.iter()
+                        .map(|mv| mv.uci_move_into(&current_pos, options.options.chess960))
+                        .collect();
                     send_message(UciMessage::Info(vec![
                         match result.eval.kind() {
                             EvalKind::Centipawn(cp) => UciInfoAttribute::from_centipawns(cp as i32),
@@ -309,6 +317,7 @@ fn main() {
                         },
                         UciInfoAttribute::Depth(result.depth),
                         UciInfoAttribute::Nodes(result.nodes),
+                        UciInfoAttribute::Pv(principal_variation),
                         UciInfoAttribute::Time(vampirc_uci::Duration::from_std(duration).unwrap()),
                         UciInfoAttribute::HashFull(tt_filledness as u16)
                     ]));

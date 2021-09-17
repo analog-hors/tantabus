@@ -39,7 +39,8 @@ pub struct SearchResult {
     pub nodes: u64,
     pub depth: u8,
     pub used_cache_entries: usize,
-    pub total_cache_entries: usize
+    pub total_cache_entries: usize,
+    pub principal_variation: Vec<Move>
 }
 
 #[derive(Debug, Clone)]
@@ -106,13 +107,33 @@ impl<H: SearchHandler> Engine<H> {
             if let Ok(eval) = eval {
                 let mv = searcher.search_result.unwrap();
                 let stats = searcher.stats;
+                let mut principal_variation = Vec::new();
+                let mut history = self.shared.history.clone();
+                let mut board = self.board.clone();
+                while let Some(entry) = self.shared.cache_table.get(&board) {
+                    history.push(board.hash());
+                    board.play_unchecked(entry.best_move);
+                    principal_variation.push(entry.best_move);
+                    let repetitions = history.iter()
+                        .rev()
+                        .take(board.halfmove_clock() as usize)
+                        .step_by(2) // Every second ply so it's our turn
+                        .skip(1)
+                        .filter(|&&hash| hash == board.hash())
+                        .count();
+                    if repetitions > 2 || board.status() != GameStatus::Ongoing {
+                        break;
+                    }
+                }
+
                 self.shared.handler.new_result(SearchResult {
                     mv,
                     eval,
                     nodes: stats.nodes,
                     depth,
                     used_cache_entries: self.shared.cache_table.len(),
-                    total_cache_entries: self.shared.cache_table.capacity()
+                    total_cache_entries: self.shared.cache_table.capacity(),
+                    principal_variation
                 });
             } else {
                 break;
