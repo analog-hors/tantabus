@@ -11,6 +11,7 @@ mod window;
 mod cache;
 mod moves;
 mod helpers;
+mod oracle;
 
 use search::*;
 use window::Window;

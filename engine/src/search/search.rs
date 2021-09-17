@@ -6,6 +6,7 @@ use super::SearchHandler;
 use super::cache::*;
 use super::helpers::move_is_quiet;
 use super::window::Window;
+use super::oracle;
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchStats {
@@ -75,9 +76,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return Ok(self.quiescence(board, ply_index, window));
             }
 
-            let init_window = window;
-
             self.stats.nodes += 1;
+
+            let init_window = window;
 
             if self.shared.handler.stop_search() {
                 return Err(());
@@ -90,6 +91,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 GameStatus::Won => return Ok(Eval::mated_in(ply_index)),
                 GameStatus::Drawn => return Ok(Eval::DRAW),
                 GameStatus::Ongoing => {}
+            }
+            if !Node::is::<node::Root>() {
+                if let Some(eval) = oracle::oracle(&board) {
+                    return Ok(eval);
+                }
             }
 
             let mut pv_move = None;
@@ -236,6 +242,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 GameStatus::Won => return Eval::mated_in(ply_index),
                 GameStatus::Drawn => return Eval::DRAW,
                 GameStatus::Ongoing => {}
+            }
+            if let Some(eval) = oracle::oracle(&board) {
+                return eval;
             }
 
             if let Some(entry) = self.shared.cache_table.get(board) {
