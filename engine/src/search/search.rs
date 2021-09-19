@@ -56,7 +56,7 @@ node_types! {
 use node::NodeType;
 
 const NULL_MOVE_REDUCTION: u8 = 2;
-const LMR_MIN_DEPTH: u8 = 3;
+const LMR_MIN_DEPTH: u8 = 4;
 fn lmr_calculate_reduction(i: usize) -> u8 {
     if i < 3 {
         0
@@ -165,7 +165,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     window
                 };
                 let mut reduction = 0;
-                if depth > LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
+                if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
                     reduction += lmr_calculate_reduction(i);
                 }
                 let mut eval = -self.search_node::<node::Normal>(
