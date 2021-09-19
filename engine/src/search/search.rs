@@ -55,6 +55,16 @@ node_types! {
 }
 use node::NodeType;
 
+const NULL_MOVE_REDUCTION: u8 = 2;
+const LMR_MIN_DEPTH: u8 = 3;
+fn lmr_calculate_reduction(i: usize) -> u8 {
+    if i < 3 {
+        0
+    } else {
+        1
+    }
+}
+
 impl<H: SearchHandler> Searcher<'_, H> {
     pub fn search_node<Node: NodeType>(
         &mut self,
@@ -126,10 +136,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
             if !Node::is::<node::Root>() && !(our_pieces & sliding_pieces).is_empty() {
                 if let Some(child) = board.null_move() {
                     let mut window = window.null_window_beta();
-                    let null_move_reduction = 2;
                     let eval = -self.search_node::<node::Normal>(
                         &child,
-                        (depth - 1).saturating_sub(null_move_reduction),
+                        (depth - 1).saturating_sub(NULL_MOVE_REDUCTION),
                         ply_index + 1,
                         -window
                     )?;
@@ -156,8 +165,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     window
                 };
                 let mut reduction = 0;
-                if i >= 3 && depth > 3 && quiet && !in_check && !gives_check {
-                    reduction += 1;
+                if depth > LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
+                    reduction += lmr_calculate_reduction(i);
                 }
                 let mut eval = -self.search_node::<node::Normal>(
                     &child,
