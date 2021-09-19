@@ -156,12 +156,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
             capture_moves.to &= their_pieces;
             for mv in capture_moves {
                 let eval = static_exchange_evaluation(board, mv);
-                let score = if eval >= Eval::ZERO {
-                    MoveScore::Capture(eval)
-                } else {
-                    MoveScore::LosingCapture(eval)
-                };
-                move_list.push((mv, score));
+                if eval < Eval::ZERO {
+                    continue;
+                }
+                move_list.push((mv, MoveScore::Capture(eval)));
             }
             false
         });
