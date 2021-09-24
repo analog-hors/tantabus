@@ -240,13 +240,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
         ply_index: u8,
         mut window: Window
     ) -> Eval {
-        self.history.push(board.hash());
+        //TODO track history and repetitions in quiescence? This seems to lose Elo though...
         let result = (|| {
             self.stats.nodes += 1;
 
-            if self.repetition(board) {
-                return Eval::DRAW;
-            }
             match board.status() {
                 GameStatus::Won => return Eval::mated_in(ply_index),
                 GameStatus::Drawn => return Eval::DRAW,
@@ -294,7 +291,6 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             best_eval
         })();
-        self.history.pop();
         result
     }
 
