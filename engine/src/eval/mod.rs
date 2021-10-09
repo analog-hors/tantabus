@@ -79,7 +79,8 @@ macro_rules! impl_math_ops {
         $(
             impl std::ops::$trait for Eval {
                 type Output = Self;
-    
+
+                #[inline(always)]
                 fn $fn(self, other: Self) -> Self::Output {
                     Self(std::ops::$trait::$fn(self.0, other.0))
                 }
@@ -116,5 +117,31 @@ impl std::ops::Neg for Eval {
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
+    }
+}
+
+macro_rules! impl_saturating_math_ops {
+    ($($fn:ident),*) => {
+        impl Eval {$(
+            #[inline(always)]
+            pub const fn $fn(self, other: Self) -> Self {
+                Self(self.0.$fn(other.0))
+            }
+        )*}
+    };
+}
+impl_saturating_math_ops! {
+    saturating_add,
+    saturating_mul
+}
+
+impl Eval {
+    #[inline(always)]
+    pub const fn saturating_sub(self, other: Self) -> Self {
+        let mut result = self.0.saturating_sub(other.0);
+        if result == i16::MIN {
+            result += 1;
+        }
+        Self(result)
     }
 }
