@@ -15,7 +15,7 @@ mod oracle;
 
 use search::*;
 use window::Window;
-use cache::CacheTable;
+pub use cache::CacheTable;
 
 pub trait SearchHandler {
     fn stop_search(&self) -> bool;
@@ -45,14 +45,12 @@ pub struct SearchResult {
 
 #[derive(Debug, Clone)]
 pub struct EngineOptions {
-    pub cache_table_size: usize,
     pub max_depth: NonZeroU8
 }
 
 impl Default for EngineOptions {
     fn default() -> Self {
         Self {
-            cache_table_size: 16_000_000,
             max_depth: 64.try_into().unwrap()
         }
     }
@@ -65,14 +63,19 @@ pub struct Engine<H> {
 }
 
 impl<H: SearchHandler> Engine<H> {
-    pub fn new(handler: H, init_pos: Board, moves: impl IntoIterator<Item=Move>, options: EngineOptions) -> Self {
+    pub fn new(
+        handler: H,
+        init_pos: Board,
+        moves: impl IntoIterator<Item=Move>,
+        options: EngineOptions,
+        cache_table: CacheTable
+    ) -> Self {
         let mut history = Vec::with_capacity(options.max_depth.get() as usize);
         let mut board = init_pos.clone();
         for mv in moves {
             history.push(board.hash());
             board.play_unchecked(mv);
         }
-        let cache_table = CacheTable::with_rounded_size(options.cache_table_size);
 
         Self {
             board,
@@ -139,5 +142,9 @@ impl<H: SearchHandler> Engine<H> {
                 break;
             }
         }
+    }
+
+    pub fn into_cache_table(self) -> CacheTable {
+        self.shared.cache_table
     }
 }

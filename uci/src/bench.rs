@@ -33,6 +33,7 @@ const POSITIONS: &[&str] = &[
 ];
 
 const DEPTH: u8 = 8;
+const CACHE: usize = 16_000_000;
 
 struct BenchHandler(Option<SearchResult>);
 
@@ -56,7 +57,8 @@ pub fn bench() {
             &mut handler,
             init_pos,
             Vec::new(),
-            EngineOptions::default()
+            EngineOptions::default(),
+            CacheTable::with_rounded_size(CACHE)
         );
         let start_time = Instant::now();
         state.search();

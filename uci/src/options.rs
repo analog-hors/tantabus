@@ -6,6 +6,7 @@ use vampirc_uci::UciOptionConfig;
 
 pub struct UciOptions {
     pub engine_options: EngineOptions,
+    pub cache_table_size: usize,
     pub chess960: bool,
     pub percent_time_used_per_move: f32,
     pub minimum_time_used_per_move: Duration
@@ -24,6 +25,7 @@ impl UciOptionsHandler {
     pub fn new() -> Self {
         let options = UciOptions {
             engine_options: EngineOptions::default(),
+            cache_table_size: 16 * MEGABYTE,
             chess960: false,
             percent_time_used_per_move: 0.05f32,
             minimum_time_used_per_move: Duration::ZERO
@@ -56,11 +58,11 @@ impl UciOptionsHandler {
             }
             UciOptionConfig::Spin {
                 name: "Hash".to_owned(),
-                default: Some((options.engine_options.cache_table_size / MEGABYTE) as i64),
+                default: Some((options.cache_table_size / MEGABYTE) as i64),
                 min: Some(0),
                 max: Some(64 * 1000) //64 Gigabytes
             } => |options, value| {
-                options.engine_options.cache_table_size = value
+                options.cache_table_size = value
                     .parse::<usize>()
                     .unwrap()
                     * MEGABYTE

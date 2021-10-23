@@ -53,11 +53,12 @@ impl SearchHandler for UciHandler {
 }
 
 impl UciHandler {
-    fn finish(mut self) {
+    fn finish(mut self, cache_table: CacheTable) {
         self.event_sink.send(
             Event::EngineSearchUpdate(
                 EngineSearchResult::SearchFinished(
-                    self.prev_result.take().unwrap()
+                    self.prev_result.take().unwrap(),
+                    cache_table
                 )
             )
         ).unwrap();
@@ -66,7 +67,7 @@ impl UciHandler {
 
 enum EngineSearchResult {
     SearchInfo(SearchResult, Duration),
-    SearchFinished(SearchResult)
+    SearchFinished(SearchResult, CacheTable)
 }
 
 fn send_message(message: UciMessage) {
@@ -164,6 +165,7 @@ fn main() {
     
     let mut position: Option<(Board, Vec<Move>)> = None;
     let mut search = None;
+    let mut cache_table = None;
 
     let mut options = UciOptionsHandler::new();
 
@@ -195,7 +197,7 @@ fn main() {
                 UciMessage::SetOption { name, value } => {
                     options.update(&name, value);
                 }
-                UciMessage::UciNewGame => {}
+                UciMessage::UciNewGame => cache_table = None,
     
                 UciMessage::Position { fen, moves, .. } => {
                     let board: Board = fen
@@ -270,16 +272,22 @@ fn main() {
                         prev_result: None,
                     };
                     std::thread::spawn({
+                        let cache_table_size = options.options.cache_table_size;
+                        let cache_table = cache_table
+                            .take()
+                            .unwrap_or_else(|| CacheTable::with_rounded_size(cache_table_size));
                         let options = options.options.engine_options.clone();
                         move || {
                             let mut search_state = Engine::new(
                                 &mut handler,
                                 init_pos,
                                 moves,
-                                options
+                                options,
+                                cache_table
                             );
                             search_state.search();
-                            handler.finish();
+                            let cache_table = search_state.into_cache_table();
+                            handler.finish(cache_table);
                         }
                     });
                     search = Some(terminator);
@@ -325,7 +333,8 @@ fn main() {
                         UciInfoAttribute::HashFull(tt_filledness as u16)
                     ]));
                 }
-                EngineSearchResult::SearchFinished(result) => {
+                EngineSearchResult::SearchFinished(result, cache) => {
+                    cache_table = Some(cache);
                     let (board, moves) = position.as_ref().unwrap();
                     let mut current_pos = board.clone();
                     for &mv in moves {

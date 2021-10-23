@@ -85,6 +85,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             if depth == 0 {
+                if !Node::is::<node::Root>() && self.repetitions(&board) > 1 {
+                    return Ok(Eval::DRAW);
+                }
                 //We are allowed to search in this node as qsearch doesn't track history
                 return Ok(self.quiescence(board, ply_index, window));
             }
@@ -97,7 +100,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return Err(());
             }
 
-            if !Node::is::<node::Root>() && self.repetition(&board) {
+            if !Node::is::<node::Root>() && self.repetitions(&board) > 0 {
                 return Ok(Eval::DRAW);
             }
             match board.status() {
@@ -305,12 +308,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
         result
     }
 
-    fn repetition(&self, board: &Board) -> bool {
+    fn repetitions(&self, board: &Board) -> usize {
         self.history.iter()
             .rev()
             .take(board.halfmove_clock() as usize)
             .step_by(2) // Every second ply so it's our turn
             .skip(1) // Skip our board
-            .any(|&hash| hash == board.hash())
+            .filter(|&&hash| hash == board.hash())
+            .count()
     }
 }
