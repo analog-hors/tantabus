@@ -38,6 +38,7 @@ pub struct SearchResult {
     pub eval: Eval,
     pub nodes: u64,
     pub depth: u8,
+    pub seldepth: u8,
     pub used_cache_entries: usize,
     pub total_cache_entries: usize,
     pub principal_variation: Vec<Move>
@@ -134,6 +135,7 @@ impl<H: SearchHandler> Engine<H> {
                     eval,
                     nodes: stats.nodes,
                     depth,
+                    seldepth: stats.seldepth,
                     used_cache_entries: self.shared.cache_table.len(),
                     total_cache_entries: self.shared.cache_table.capacity(),
                     principal_variation

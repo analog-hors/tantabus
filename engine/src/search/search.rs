@@ -10,7 +10,8 @@ use super::oracle;
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchStats {
-    pub nodes: u64
+    pub nodes: u64,
+    pub seldepth: u8
 }
 
 pub struct SearchSharedState<H> {
@@ -77,6 +78,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
     ) -> Result<Eval, ()> {
         self.history.push(board.hash());
         let result = (|| {
+            self.stats.seldepth = self.stats.seldepth.max(ply_index);
+
             let in_check = !board.checkers().is_empty();
 
             if in_check {
