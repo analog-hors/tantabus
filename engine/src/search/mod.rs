@@ -120,7 +120,7 @@ impl<H: SearchHandler> Engine<H> {
                     principal_variation.push(entry.best_move);
                     let repetitions = history.iter()
                         .rev()
-                        .take(board.halfmove_clock() as usize)
+                        .take(board.halfmove_clock() as usize + 1)
                         .step_by(2) // Every second ply so it's our turn
                         .skip(1)
                         .filter(|&&hash| hash == board.hash())

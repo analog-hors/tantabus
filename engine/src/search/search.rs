@@ -314,7 +314,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
     fn repetitions(&self, board: &Board) -> usize {
         self.history.iter()
             .rev()
-            .take(board.halfmove_clock() as usize)
+            .take(board.halfmove_clock() as usize + 1)
             .step_by(2) // Every second ply so it's our turn
             .skip(1) // Skip our board
             .filter(|&&hash| hash == board.hash())
