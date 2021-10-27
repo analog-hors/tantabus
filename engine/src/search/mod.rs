@@ -1,7 +1,6 @@
 use std::convert::TryInto;
 use std::num::NonZeroU8;
 
-use arrayvec::ArrayVec;
 use cozy_chess::*;
 
 use crate::eval::Eval;
@@ -90,13 +89,14 @@ impl<H: SearchHandler> Engine<H> {
     }
 
     pub fn search(&mut self) {
+        const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
         for depth in 1..=self.options.max_depth.get() {
             let history = self.shared.history.clone();
             let mut searcher = Searcher {
                 shared: &mut self.shared,
                 search_result: None,
                 history,
-                killers: vec![ArrayVec::new(); self.options.max_depth.get() as usize],
+                killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
                 history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM],
                 stats: SearchStats::default()
             };

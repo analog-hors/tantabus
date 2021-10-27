@@ -27,7 +27,7 @@ pub struct Searcher<'s, H> {
     pub shared: &'s mut SearchSharedState<H>,
     pub search_result: Option<Move>,
     pub history: Vec<u64>,
-    pub killers: Vec<KillerEntry>,
+    pub killers: [KillerEntry; u8::MAX as usize],
     pub history_table: HistoryTable,
     pub stats: SearchStats
 }
