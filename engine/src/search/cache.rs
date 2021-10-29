@@ -65,17 +65,10 @@ impl CacheTable {
         let hash = board.hash();
         let index = hash as usize & self.mask;
         let old = &mut self.table[index];
-        if let Some(old) = old {
-            if old.0 == hash || entry.depth > old.1.depth {
-                //Matching hashes uses the newer entry since it has more information.
-                //Otherwise, select the deeper entry.
-                *old = (hash, entry);
-            }
-        } else {
-            //Insert to empty slot
+        if old.is_none() {
             self.len += 1;
-            *old = Some((hash, entry));
         }
+        *old = Some((hash, entry));
     }
 
     pub fn capacity(&self) -> usize {
