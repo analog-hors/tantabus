@@ -25,8 +25,9 @@ The code is restructured and a bit cleaner, and it also uses my own [`cozy-chess
     - Killer moves
     - History heuristic
 ### Evaluation
-- Tuned piece square tables
-    - [Tuned with currently private tuner on Ethereal dataset](https://github.com/analog-hors/lunatic/commit/28b85304aa71e1561883cf53976496b3dbba8fd8)
+- [Automatically tuned with currently private tuner on an Ethereal dataset](https://github.com/analog-hors/tantabus/commit/8c894ffeed7516b05be0a8e8db6f1d96aa83904c)
+- Piece square tables
+- Mobility evaluation (simple pseudo-legal counting)
 - Tapered/phased evaluation (using Fruit-like method)
 ### Time management
 - Uses a fixed percentage of time left
