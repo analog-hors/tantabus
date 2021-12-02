@@ -1,3 +1,4 @@
+use std::num::NonZeroU32;
 use cozy_chess::*;
 
 use crate::eval::*;
@@ -17,38 +18,51 @@ pub struct TableEntry {
     pub best_move: Move
 }
 
-type FullTableEntry = Option<(u64, TableEntry)>;
+pub type TableKeyValueEntry = Option<(u64, TableEntry)>;
 
 #[derive(Debug)]
 pub struct CacheTable {
-    table: Box<[FullTableEntry]>,
-    len: usize,
-    mask: usize
+    table: Box<[TableKeyValueEntry]>,
+    len: u32
+}
+
+#[derive(Debug)]
+pub enum CacheTableError {
+    NotEnoughMemory,
+    TooManyEntries
 }
 
 impl CacheTable {
-    ///Rounds up the number of entries to a power of two.
-    ///`panic` on overflow.
-    pub fn with_rounded_entries(entries: usize) -> Self {
-        let entries = entries.checked_next_power_of_two().unwrap();
-        let table = vec![None; entries].into_boxed_slice();
+    ///Create a cache table with a given number of entries.
+    pub fn new_with_entries(entries: NonZeroU32) -> Self {
         Self {
-            len: 0,
-            mask: table.len() - 1,
-            table
+            table: vec![None; entries.get() as usize].into_boxed_slice(),
+            len: 0
         }
     }
 
-    ///Converts the size in bytes to an amount of entries
-    ///then rounds up the size to the nearest power of two.
-    ///`panic` on overflow.
-    pub fn with_rounded_size(size: usize) -> Self {
-        Self::with_rounded_entries(size / std::mem::size_of::<FullTableEntry>())
+    /// Create a cache table no bigger than a given size in bytes.
+    /// # Errors
+    /// There must be enough space for one [`TableKeyValueEntry`].
+    /// If not, this will error with [`CacheTableError::NotEnoughMemory`].
+    /// There must be at most [`u32::MAX`] entries.
+    /// If not, this will error with [`CacheTableError::TooManyEntries`].
+    pub fn new_with_size(size: usize) -> Result<Self, CacheTableError> {
+        let entries = size / std::mem::size_of::<TableKeyValueEntry>();
+        let entries: u32 = entries.try_into()
+            .map_err(|_| CacheTableError::TooManyEntries)?;
+        let entries = entries.try_into()
+            .map_err(|_| CacheTableError::NotEnoughMemory)?;
+        Ok(Self::new_with_entries(entries))
+    }
+
+    fn hash_to_index(&self, hash: u64) -> usize {
+        ((hash as u32 as u64 * self.capacity() as u64) >> u32::BITS) as usize
     }
 
     pub fn get(&self, board: &Board) -> Option<TableEntry> {
         let hash = board.hash();
-        let index = hash as usize & self.mask;
+        let index = self.hash_to_index(hash);
         if let Some((entry_hash, entry)) = self.table[index] {
             if entry_hash == hash {
                 return Some(entry);
@@ -63,7 +77,7 @@ impl CacheTable {
         entry: TableEntry
     ) {
         let hash = board.hash();
-        let index = hash as usize & self.mask;
+        let index = self.hash_to_index(hash);
         let old = &mut self.table[index];
         if old.is_none() {
             self.len += 1;
@@ -71,11 +85,11 @@ impl CacheTable {
         *old = Some((hash, entry));
     }
 
-    pub fn capacity(&self) -> usize {
-        self.table.len()
+    pub fn capacity(&self) -> u32 {
+        self.table.len() as u32
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u32 {
         self.len
     }
 }

@@ -275,7 +275,7 @@ fn main() {
                         let cache_table_size = options.options.cache_table_size;
                         let cache_table = cache_table
                             .take()
-                            .unwrap_or_else(|| CacheTable::with_rounded_size(cache_table_size));
+                            .unwrap_or_else(|| CacheTable::new_with_size(cache_table_size).unwrap());
                         let options = options.options.engine_options.clone();
                         move || {
                             let mut search_state = Engine::new(

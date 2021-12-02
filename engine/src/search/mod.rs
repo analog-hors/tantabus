@@ -14,7 +14,7 @@ mod oracle;
 
 use search::*;
 use window::Window;
-pub use cache::CacheTable;
+pub use cache::{CacheTable, TableEntry, TableKeyValueEntry};
 
 pub trait SearchHandler {
     fn stop_search(&self) -> bool;
@@ -38,8 +38,8 @@ pub struct SearchResult {
     pub nodes: u64,
     pub depth: u8,
     pub seldepth: u8,
-    pub used_cache_entries: usize,
-    pub total_cache_entries: usize,
+    pub used_cache_entries: u32,
+    pub total_cache_entries: u32,
     pub principal_variation: Vec<Move>
 }
 

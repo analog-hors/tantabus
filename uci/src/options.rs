@@ -60,7 +60,7 @@ impl UciOptionsHandler {
                 name: "Hash".to_owned(),
                 default: Some((options.cache_table_size / MEGABYTE) as i64),
                 min: Some(0),
-                max: Some(64 * 1000) //64 Gigabytes
+                max: Some(64_000) //64 Gigabytes
             } => |options, value| {
                 options.cache_table_size = value
                     .parse::<usize>()

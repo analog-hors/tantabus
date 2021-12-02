@@ -58,7 +58,7 @@ pub fn bench() {
             init_pos,
             Vec::new(),
             EngineOptions::default(),
-            CacheTable::with_rounded_size(CACHE)
+            CacheTable::new_with_size(CACHE).unwrap()
         );
         let start_time = Instant::now();
         state.search();
