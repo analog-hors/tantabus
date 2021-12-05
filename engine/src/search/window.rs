@@ -12,6 +12,13 @@ impl Window {
         beta: Eval::MAX
     };
 
+    pub fn around(eval: Eval, bounds: Eval) -> Self {
+        Window {
+            alpha: eval.saturating_sub(bounds),
+            beta: eval.saturating_add(bounds)
+        }
+    }
+
     pub fn narrow_alpha(&mut self, eval: Eval) {
         self.alpha = self.alpha.max(eval);
     }
