@@ -102,20 +102,18 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             let mut pv_move = None;
-            if node != Node::Pv {
-                if let Some(entry) = self.shared.cache_table.get(&board) {
-                    pv_move = Some(entry.best_move);
-                    if entry.depth >= depth {
-                        match entry.kind {
-                            TableEntryKind::Exact => if node != Node::Root {
-                                return Ok(entry.eval);
-                            },
-                            TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
-                            TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
-                        }
-                        if node != Node::Root && window.empty() {
+            if let Some(entry) = self.shared.cache_table.get(&board) {
+                pv_move = Some(entry.best_move);
+                if node != Node::Pv && entry.depth >= depth {
+                    match entry.kind {
+                        TableEntryKind::Exact => if node != Node::Root {
                             return Ok(entry.eval);
-                        }
+                        },
+                        TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
+                        TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
+                    }
+                    if node != Node::Root && window.empty() {
+                        return Ok(entry.eval);
                     }
                 }
             }
