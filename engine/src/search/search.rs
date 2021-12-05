@@ -32,29 +32,12 @@ pub struct Searcher<'s, H> {
     pub stats: SearchStats
 }
 
-macro_rules! node_types {
-    ($($type:ident),*) => {
-        pub mod node {
-            use std::any::TypeId;
-
-            pub trait NodeType: 'static {
-                fn is<N: NodeType>() -> bool {
-                    TypeId::of::<Self>() == TypeId::of::<N>()
-                }
-            }
-
-            $(pub struct $type;
-    
-            impl NodeType for $type {})*
-        }
-    };
-}
-
-node_types! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Node {
     Root,
+    Pv,
     Normal
 }
-use node::NodeType;
 
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 4;
@@ -69,8 +52,9 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
-    pub fn search_node<Node: NodeType>(
+    pub fn search_node(
         &mut self,
+        node: Node,
         board: &Board,
         mut depth: u8,
         ply_index: u8,
@@ -88,7 +72,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             if depth == 0 {
-                if !Node::is::<node::Root>() && self.repetitions(&board) > 1 {
+                if node != Node::Root && self.repetitions(&board) > 1 {
                     return Ok(Eval::DRAW);
                 }
                 //We are allowed to search in this node as qsearch doesn't track history
@@ -103,7 +87,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return Err(());
             }
 
-            if !Node::is::<node::Root>() && self.repetitions(&board) > 0 {
+            if node != Node::Root && self.repetitions(&board) > 0 {
                 return Ok(Eval::DRAW);
             }
             match board.status() {
@@ -111,25 +95,27 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 GameStatus::Drawn => return Ok(Eval::DRAW),
                 GameStatus::Ongoing => {}
             }
-            if !Node::is::<node::Root>() {
+            if node != Node::Root {
                 if let Some(eval) = oracle::oracle(&board) {
                     return Ok(eval);
                 }
             }
 
             let mut pv_move = None;
-            if let Some(entry) = self.shared.cache_table.get(&board) {
-                pv_move = Some(entry.best_move);
-                if entry.depth >= depth {
-                    match entry.kind {
-                        TableEntryKind::Exact => if !Node::is::<node::Root>() {
+            if node != Node::Pv {
+                if let Some(entry) = self.shared.cache_table.get(&board) {
+                    pv_move = Some(entry.best_move);
+                    if entry.depth >= depth {
+                        match entry.kind {
+                            TableEntryKind::Exact => if node != Node::Root {
+                                return Ok(entry.eval);
+                            },
+                            TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
+                            TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
+                        }
+                        if node != Node::Root && window.empty() {
                             return Ok(entry.eval);
-                        },
-                        TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
-                        TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
-                    }
-                    if !Node::is::<node::Root>() && window.empty() {
-                        return Ok(entry.eval);
+                        }
                     }
                 }
             }
@@ -142,10 +128,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
-            if !Node::is::<node::Root>() && !(our_pieces & sliding_pieces).is_empty() {
+            if node != Node::Root && !(our_pieces & sliding_pieces).is_empty() {
                 if let Some(child) = board.null_move() {
                     let mut window = window.null_window_beta();
-                    let eval = -self.search_node::<node::Normal>(
+                    let eval = -self.search_node(
+                        Node::Normal,
                         &child,
                         (depth - 1).saturating_sub(NULL_MOVE_REDUCTION),
                         ply_index + 1,
@@ -176,16 +163,22 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     continue;
                 }
 
-                let mut child_window = if i > 0 {
-                    window.null_window_alpha()
+                let mut child_node_type = if i == 0 {
+                    Node::Pv
                 } else {
+                    Node::Normal
+                };
+                let mut child_window = if child_node_type == Node::Pv {
                     window
+                } else {
+                    window.null_window_alpha()
                 };
                 let mut reduction = 0;
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
                     reduction += lmr_calculate_reduction(i);
                 }
-                let mut eval = -self.search_node::<node::Normal>(
+                let mut eval = -self.search_node(
+                    child_node_type,
                     &child,
                     (depth - 1).saturating_sub(reduction),
                     ply_index + 1,
@@ -193,7 +186,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 )?;
                 if (child_window != window || reduction > 0) && window.contains(eval) {
                     child_window = window;
-                    eval = -self.search_node::<node::Normal>(
+                    child_node_type = Node::Pv;
+                    eval = -self.search_node(
+                        child_node_type,
                         &child,
                         depth - 1,
                         ply_index + 1,
@@ -241,7 +236,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 best_move
             });
 
-            if Node::is::<node::Root>() {
+            if node == Node::Root {
                 self.search_result = Some(best_move);
             }
 
