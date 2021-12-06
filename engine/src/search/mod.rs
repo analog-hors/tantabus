@@ -121,7 +121,7 @@ impl<H: SearchHandler> Engine<H> {
 
             if let Ok(eval) = eval {
                 if depth >= 3 {
-                    aspiration_window = Window::around(eval, Eval::cp(50));
+                    aspiration_window = Window::around(eval, Eval::cp(75));
                 }
                 let mv = searcher.search_result.unwrap();
                 let stats = searcher.stats;
