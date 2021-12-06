@@ -90,6 +90,7 @@ impl<H: SearchHandler> Engine<H> {
 
     pub fn search(&mut self) {
         const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
+        let mut aspiration_window = Window::INFINITY;
         for depth in 1..=self.options.max_depth.get() {
             let history = self.shared.history.clone();
             let mut searcher = Searcher {
@@ -101,14 +102,27 @@ impl<H: SearchHandler> Engine<H> {
                 stats: SearchStats::default()
             };
 
-            let eval = searcher.search_node::<node::Root>(
+            let mut eval = searcher.search_node::<node::Root>(
                 &self.board,
                 depth,
                 0,
-                Window::INFINITY
+                aspiration_window
             );
+            if let Ok(e) = eval {
+                if !aspiration_window.contains(e) {
+                    eval = searcher.search_node::<node::Root>(
+                        &self.board,
+                        depth,
+                        0,
+                        Window::INFINITY
+                    );
+                }
+            }
 
             if let Ok(eval) = eval {
+                if depth >= 3 {
+                    aspiration_window = Window::around(eval, Eval::cp(50));
+                }
                 let mv = searcher.search_result.unwrap();
                 let stats = searcher.stats;
                 let mut principal_variation = Vec::new();
