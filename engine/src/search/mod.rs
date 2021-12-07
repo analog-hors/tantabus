@@ -112,7 +112,8 @@ impl<H: SearchHandler> Engine<H> {
                         }
                     }
                 }
-                let eval = searcher.search_node::<node::Root>(
+                let eval = searcher.search_node(
+                    Node::Root,
                     &self.board,
                     depth,
                     0,
