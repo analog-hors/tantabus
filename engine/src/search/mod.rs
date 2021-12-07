@@ -90,7 +90,7 @@ impl<H: SearchHandler> Engine<H> {
 
     pub fn search(&mut self) {
         const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
-        let mut aspiration_window = Window::INFINITY;
+        let mut prev_eval = None;
         for depth in 1..=self.options.max_depth.get() {
             let history = self.shared.history.clone();
             let mut searcher = Searcher {
@@ -102,27 +102,32 @@ impl<H: SearchHandler> Engine<H> {
                 stats: SearchStats::default()
             };
 
-            let mut eval = searcher.search_node::<node::Root>(
-                &self.board,
-                depth,
-                0,
-                aspiration_window
-            );
-            if let Ok(e) = eval {
-                if !aspiration_window.contains(e) {
-                    eval = searcher.search_node::<node::Root>(
-                        &self.board,
-                        depth,
-                        0,
-                        Window::INFINITY
-                    );
+            let mut windows = [50].iter().copied().map(Eval::cp);
+            let eval = loop {
+                let mut aspiration_window = Window::INFINITY;
+                if depth > 3 {
+                    if let Some(prev_eval) = prev_eval {
+                        if let Some(bounds) = windows.next() {
+                            aspiration_window = Window::around(prev_eval, bounds);
+                        }
+                    }
                 }
-            }
+                let eval = searcher.search_node::<node::Root>(
+                    &self.board,
+                    depth,
+                    0,
+                    aspiration_window
+                );
+                if let Ok(eval) = eval {
+                    if !aspiration_window.contains(eval) {
+                        continue;
+                    }
+                }
+                break eval;
+            };
 
             if let Ok(eval) = eval {
-                if depth >= 3 {
-                    aspiration_window = Window::around(eval, Eval::cp(50));
-                }
+                prev_eval = Some(eval);
                 let mv = searcher.search_result.unwrap();
                 let stats = searcher.stats;
                 let mut principal_variation = Vec::new();
