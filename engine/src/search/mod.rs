@@ -102,7 +102,7 @@ impl<H: SearchHandler> Engine<H> {
                 stats: SearchStats::default()
             };
 
-            let mut windows = [50].iter().copied().map(Eval::cp);
+            let mut windows = [50, 100].iter().copied().map(Eval::cp);
             let eval = loop {
                 let mut aspiration_window = Window::INFINITY;
                 if depth > 3 {
