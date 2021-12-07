@@ -41,6 +41,7 @@ pub enum Node {
 
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 4;
+const IID_MIN_DEPTH: u8 = 4;
 const FUTILITY_MARGIN: Eval = Eval::cp(300);
 
 fn lmr_calculate_reduction(i: usize) -> u8 {
@@ -49,6 +50,10 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
     } else {
         1
     }
+}
+
+fn iid_calculate_reduction(depth: u8) -> u8 {
+    depth / 2
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
@@ -140,6 +145,24 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     if window.empty() {
                         return Ok(eval);
                     }
+                }
+            }
+
+            //Internal iterative deepening
+            if node == Node::Pv && pv_move.is_none() && depth >= IID_MIN_DEPTH {
+                //TODO This is kinda hacky, need a better mechanism for "switching" to nodes.
+                self.history.pop();
+                let result = self.search_node(
+                    Node::Normal,
+                    board,
+                    depth - iid_calculate_reduction(depth),
+                    ply_index,
+                    window
+                );
+                self.history.push(board.hash());
+                result?;
+                if let Some(entry) = self.shared.cache_table.get(&board) {
+                    pv_move = Some(entry.best_move);
                 }
             }
             let moves = self.new_movelist(
