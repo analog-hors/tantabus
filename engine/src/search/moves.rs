@@ -170,7 +170,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 }
 
 impl Iterator for MoveList {
-    type Item = Move;
+    type Item = (Move, MoveScore);
 
     fn next(&mut self) -> Option<Self::Item> {
         let max_index = self.move_list.iter()
@@ -178,7 +178,7 @@ impl Iterator for MoveList {
             .max_by_key(|(_, (_, score))| score)
             .map(|(i, _)| i);
         if let Some(max_index) = max_index {
-            Some(self.move_list.swap_remove(max_index).0)
+            Some(self.move_list.swap_remove(max_index))
         } else {
             None
         }
