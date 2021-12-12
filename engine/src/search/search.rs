@@ -53,8 +53,11 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
 }
 
 fn lmp_quiets_to_check(depth: u8) -> usize {
-    let depth = depth as usize;
-    11 + depth * depth * 3
+    if depth <= 2 {
+        19
+    } else {
+        usize::MAX
+    }
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
