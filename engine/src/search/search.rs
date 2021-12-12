@@ -54,7 +54,7 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
 
 fn lmp_quiets_to_check(depth: u8) -> usize {
     if depth <= 2 {
-        19
+        24
     } else {
         usize::MAX
     }
