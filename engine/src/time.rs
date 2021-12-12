@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use crate::search::SearchResult;
-use crate::eval::*;
 
 pub trait TimeManager {
     ///Update the time manager's internal state with a new result.
@@ -63,11 +62,6 @@ impl StandardTimeManager {
 
 impl TimeManager for StandardTimeManager {
     fn update(&mut self, result: SearchResult, time: Duration) -> Duration {
-        if let EvalKind::Centipawn(_) = result.eval.kind() {
-            self.0.update(result, time)
-        } else {
-            //Forced outcome, cut thinking short
-            Duration::ZERO
-        }
+        self.0.update(result, time)
     }
 }
