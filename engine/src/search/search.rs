@@ -41,7 +41,6 @@ pub enum Node {
 
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 4;
-const FUTILITY_MARGIN: Eval = Eval::cp(300);
 
 fn lmr_calculate_reduction(i: usize) -> u8 {
     if i < 3 {
@@ -148,18 +147,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 self.killers[ply_index as usize].clone()
             );
 
-            let static_eval = EVALUATOR.evaluate(board);
-            let max_eval = static_eval.saturating_add(FUTILITY_MARGIN);
-            let futile = depth == 1 && max_eval <= window.alpha;
             for (i, mv) in moves.enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();
                 let quiet = move_is_quiet(mv, &board);
-
-                if best_move.is_some() && futile && quiet && !in_check && !gives_check {
-                    continue;
-                }
 
                 let mut child_node_type = if i == 0 {
                     Node::Pv
