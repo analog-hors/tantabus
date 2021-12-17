@@ -53,21 +53,52 @@ impl TimeManager for PercentageTimeManager {
 }
 
 ///The standard time manager. Still quite naive.
-pub struct StandardTimeManager(PercentageTimeManager);
+pub enum StandardTimeManager {
+    Infinite,
+    Fixed(Duration),
+    Standard {
+        prev_eval: Option<i16>,
+        allocated: Duration,
+        elapsed: Duration
+    }
+}
 
 impl StandardTimeManager {
-    pub fn new(time_left: Duration, percentage: f32, minimum_time: Duration) -> Self {
-        Self(PercentageTimeManager::new(time_left, percentage, minimum_time))
+    pub fn standard(time_left: Duration) -> Self {
+        Self::Standard {
+            prev_eval: None,
+            allocated: time_left.mul_f32(0.025),
+            elapsed: Duration::ZERO
+        }
     }
 }
 
 impl TimeManager for StandardTimeManager {
     fn update(&mut self, result: SearchResult, time: Duration) -> Duration {
-        if let EvalKind::Centipawn(_) = result.eval.kind() {
-            self.0.update(result, time)
-        } else {
-            //Forced outcome, cut thinking short
-            Duration::ZERO
+        match self {
+            Self::Infinite => Duration::MAX,
+            Self::Fixed(time_left) => {
+                *time_left = time_left.saturating_sub(time);
+                *time_left
+            }
+            Self::Standard {
+                prev_eval,
+                allocated,
+                elapsed
+            } => {
+                if let EvalKind::Centipawn(eval) = result.eval.kind() {
+                    if let Some(prev_eval) = prev_eval.replace(eval) {
+                        let eval_diff = (prev_eval - eval).abs();
+                        let multiplier = 1.05f32.powf((eval_diff as f32 / 25.0).clamp(-2.0, 2.0));
+                        *allocated = allocated.mul_f32(multiplier);
+                    }
+                    *elapsed += time;
+                    allocated.saturating_sub(*elapsed)
+                } else {
+                    //Forced outcome, cut thinking short
+                    Duration::ZERO
+                }
+            }
         }
     }
 }

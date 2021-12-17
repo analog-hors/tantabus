@@ -218,11 +218,7 @@ fn main() {
                 UciMessage::Go { time_control, search_control } => {
                     let time_manager;
                     time_manager = match time_control {
-                        Some(UciTimeControl::MoveTime(time)) => StandardTimeManager::new(
-                            Duration::ZERO,
-                            0.0,
-                            time.to_std().unwrap()
-                        ),
+                        Some(UciTimeControl::MoveTime(time)) => StandardTimeManager::Fixed(time.to_std().unwrap()),
                         Some(UciTimeControl::TimeLeft {
                             white_time,
                             black_time,
@@ -238,18 +234,10 @@ fn main() {
                                 Color::White => white_time,
                                 Color::Black => black_time
                             }.unwrap().to_std().unwrap();
-                            StandardTimeManager::new(
-                                time_left, 
-                                options.options.percent_time_used_per_move,
-                                options.options.minimum_time_used_per_move
-                            )
+                            StandardTimeManager::standard(time_left)
                         }
                         Some(UciTimeControl::Ponder) => todo!(),
-                        None | Some(UciTimeControl::Infinite) => StandardTimeManager::new(
-                            Duration::ZERO,
-                            0.0,
-                            Duration::MAX
-                        )
+                        None | Some(UciTimeControl::Infinite) => StandardTimeManager::Infinite
                     };
                     
                     options.options.engine_options.max_depth = 64u8.try_into().unwrap();
