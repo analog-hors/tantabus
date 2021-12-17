@@ -41,7 +41,6 @@ pub enum Node {
 
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 4;
-const FUTILITY_MARGIN: Eval = Eval::cp(300);
 
 fn lmr_calculate_reduction(i: usize) -> u8 {
     if i < 3 {
@@ -49,6 +48,14 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
     } else {
         1
     }
+}
+
+fn futility_margin(depth: u8) -> Option<Eval> {
+    Some(Eval::cp(match depth {
+        1 => 300,
+        2 => 600,
+        _ => return None
+    }))
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
@@ -148,9 +155,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 self.killers[ply_index as usize].clone()
             );
 
-            let static_eval = EVALUATOR.evaluate(board);
-            let max_eval = static_eval.saturating_add(FUTILITY_MARGIN);
-            let futile = depth == 1 && max_eval <= window.alpha;
+            let futile = if let Some(margin) = futility_margin(depth) {
+                let static_eval = EVALUATOR.evaluate(board);
+                let max_eval = static_eval.saturating_add(margin);
+                max_eval <= window.alpha
+            } else {
+                false
+            };
             for (i, mv) in moves.enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
