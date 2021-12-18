@@ -58,6 +58,14 @@ fn futility_margin(depth: u8) -> Option<Eval> {
     }))
 }
 
+fn reverse_futility_margin(depth: u8) -> Option<Eval> {
+    if depth < 5 {
+        Some(Eval::cp(150 * depth as i16))
+    } else {
+        None
+    }
+}
+
 impl<H: SearchHandler> Searcher<'_, H> {
     pub fn search_node(
         &mut self,
@@ -125,6 +133,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
+            let static_eval = EVALUATOR.evaluate(board);
+            if !matches!(node, Node::Root | Node::Pv) {
+                if let Some(margin) = reverse_futility_margin(depth) {
+                    let eval_estimate = static_eval.saturating_sub(margin);
+                    if eval_estimate >= window.beta {
+                        return Ok(eval_estimate);
+                    }
+                }
+            }
+
             let our_pieces = board.colors(board.side_to_move());
             let sliding_pieces =
                 board.pieces(Piece::Rook) |
@@ -156,7 +174,6 @@ impl<H: SearchHandler> Searcher<'_, H> {
             );
 
             let futile = if let Some(margin) = futility_margin(depth) {
-                let static_eval = EVALUATOR.evaluate(board);
                 let max_eval = static_eval.saturating_add(margin);
                 max_eval <= window.alpha
             } else {
