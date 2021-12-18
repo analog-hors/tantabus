@@ -178,6 +178,7 @@ fn main() {
                 let msg = parse_message(&line);
                 let _ = event_sink.send(Event::UciMessage(msg));
             }
+            let _ = event_sink.send(Event::UciMessage(UciMessage::Quit));
         }
     });
 
