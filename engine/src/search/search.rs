@@ -134,10 +134,12 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             let static_eval = EVALUATOR.evaluate(board);
-            if let Some(margin) = reverse_futility_margin(depth) {
-                let eval_estimate = static_eval.saturating_sub(margin);
-                if eval_estimate >= window.beta {
-                    return Ok(eval_estimate);
+            if !matches!(node, Node::Root | Node::Pv) {
+                if let Some(margin) = reverse_futility_margin(depth) {
+                    let eval_estimate = static_eval.saturating_sub(margin);
+                    if eval_estimate >= window.beta {
+                        return Ok(eval_estimate);
+                    }
                 }
             }
 
