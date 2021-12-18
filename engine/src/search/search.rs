@@ -138,7 +138,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 if let Some(margin) = reverse_futility_margin(depth) {
                     let eval_estimate = static_eval.saturating_sub(margin);
                     if eval_estimate >= window.beta {
-                        return Ok(eval_estimate);
+                        return Ok(static_eval);
                     }
                 }
             }
