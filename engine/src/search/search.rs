@@ -59,7 +59,7 @@ fn futility_margin(depth: u8) -> Option<Eval> {
 }
 
 fn reverse_futility_margin(depth: u8) -> Option<Eval> {
-    if depth < 5 {
+    if depth < 7 {
         Some(Eval::cp(100 * depth as i16))
     } else {
         None
