@@ -8,6 +8,7 @@ The code is restructured and a bit cleaner, and it also uses my own [`cozy-chess
 - Fixed shift fancy black magic bitboards using [`cozy-chess`](https://github.com/analog-hors/cozy-chess)
 ### Search
 - Principal variation search
+- Aspiration windows
 - Transposition table
     - "Always replace" replacement scheme
 - Quiescence search
@@ -18,6 +19,7 @@ The code is restructured and a bit cleaner, and it also uses my own [`cozy-chess
 - Pruning
     - Null move pruning
     - Futility pruning
+    - Reverse futility pruning
     - Negative SEE moves pruned in QSearch
 - Move ordering
     - Hash move
