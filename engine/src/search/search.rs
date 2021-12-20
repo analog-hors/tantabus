@@ -51,11 +51,11 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
 }
 
 fn futility_margin(depth: u8) -> Option<Eval> {
-    Some(Eval::cp(match depth {
-        1 => 300,
-        2 => 600,
-        _ => return None
-    }))
+    if depth < 5 {
+        Some(Eval::cp(300 * depth as i16))
+    } else {
+        None
+    }
 }
 
 fn reverse_futility_margin(depth: u8) -> Option<Eval> {
