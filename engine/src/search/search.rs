@@ -117,7 +117,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             let mut pv_move = None;
-            if let Some(entry) = self.shared.cache_table.get(&board) {
+            let cache_entry = self.shared.cache_table.get(&board);
+            if let Some(entry) = cache_entry {
                 pv_move = Some(entry.best_move);
                 if entry.depth >= depth {
                     match entry.kind {
@@ -133,7 +134,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let static_eval = EVALUATOR.evaluate(board);
+            let static_eval = cache_entry.map_or_else(
+                || EVALUATOR.evaluate(board),
+                |e| e.eval
+            );
             if !matches!(node, Node::Root | Node::Pv) {
                 if let Some(margin) = reverse_futility_margin(depth) {
                     let eval_estimate = static_eval.saturating_sub(margin);
