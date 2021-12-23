@@ -29,6 +29,7 @@ The code is restructured and a bit cleaner, and it also uses my own [`cozy-chess
 ### Evaluation
 - [Automatically tuned with currently private tuner on an Ethereal dataset](https://github.com/analog-hors/tantabus/commit/8c894ffeed7516b05be0a8e8db6f1d96aa83904c)
 - Piece square tables
+    - Dedicated passed pawn tables
 - Mobility evaluation (simple pseudo-legal counting)
 - Tapered/phased evaluation (using Fruit-like method)
 ### Time management
