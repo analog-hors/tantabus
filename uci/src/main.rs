@@ -18,6 +18,8 @@ mod bench;
 use options::UciOptionsHandler;
 use convert::*;
 
+const VERSION: &str = "1.0.0";
+
 struct UciHandler {
     time_manager: StandardTimeManager,
     search_begin: Instant,
@@ -186,7 +188,7 @@ fn main() {
         match event {
             Event::UciMessage(message) => match message {
                 UciMessage::Uci => {
-                    send_message(UciMessage::id_name("Tantabus"));
+                    send_message(UciMessage::id_name(&format!("Tantabus {}", VERSION)));
                     send_message(UciMessage::id_author("Analog Hors"));
                     for (option, _) in options.handlers.values() {
                         send_message(UciMessage::Option(option.clone()));
