@@ -1,0 +1,65 @@
+name: Tantabus
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-2019, ubuntu-20.04]
+        cpu: [x86-64-v3, x86-64-v2]
+    runs-on: ${{matrix.os}}
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Fetch dependencies
+        run: cargo fetch
+      - name: Build test binary
+        run: cargo test --no-run --offline
+      - name: Run tests
+        run: cargo test --offline
+      - name: Build release binary
+        run: cargo rustc --release -p tantabus-uci --offline -- -C target-cpu=${{matrix.cpu}}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.os}}-${{matrix.cpu}}
+          path: |
+            target/release/tantabus-uci
+            target/release/tantabus-uci.exe
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+      - name: Rename artifacts
+        run: |
+          for path in */*; do
+            target=${path%/*}
+            binary=${path#*/}
+            name=${binary%.*}
+            ext=${binary#*$name}
+            mv $target/$binary $target/tantabus-$target$ext
+          done
+      - name: Generate description
+        env:
+          MESSAGE: ${{github.event.head_commit.message}}
+        run: |
+          tail -n +3 <<< "$MESSAGE" > DESC.txt
+          echo >> DESC.txt
+          echo "### What binary do I run?" >> DESC.txt
+          echo "The releases follow [microarchitecture levels](https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels)." >> DESC.txt
+          echo "x86-64-v3 is recommended for most systems." >> DESC.txt
+          echo "However, it may not run on older systems (pre-Haswell/pre-Excavator)." >> DESC.txt
+          echo "x86-64-v2 will run on almost any system." >> DESC.txt
+      - name: Make release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "*/*"
+          body_path: DESC.txt
