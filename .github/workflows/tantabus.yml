@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2019, ubuntu-20.04]
-        cpu: [x86-64-v3, x86-64-v2]
+        cpu: [x86-64-v3, x86-64-v2, x86-64]
     runs-on: ${{matrix.os}}
     env:
       CARGO_TERM_COLOR: always
@@ -58,6 +58,7 @@ jobs:
           echo "x86-64-v3 is recommended for most systems." >> DESC.txt
           echo "However, it may not run on older systems (pre-Haswell/pre-Excavator)." >> DESC.txt
           echo "x86-64-v2 will run on almost any system." >> DESC.txt
+          echo "x86-64 is a baseline binary that will run on truly ancient systems." >> DESC.txt
       - name: Make release
         uses: softprops/action-gh-release@v1
         with:
