@@ -19,7 +19,7 @@ pub struct UciOptionsHandler {
     pub options: UciOptions
 }
 
-const MEGABYTE: usize = 1000_000;
+const MEGABYTE: usize = 1_000_000;
 
 impl UciOptionsHandler {
     pub fn new() -> Self {

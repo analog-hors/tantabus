@@ -71,7 +71,7 @@ impl<H: SearchHandler> Engine<H> {
         cache_table: CacheTable
     ) -> Self {
         let mut history = Vec::with_capacity(options.max_depth.get() as usize);
-        let mut board = init_pos.clone();
+        let mut board = init_pos;
         for mv in moves {
             history.push(board.hash());
             board.play_unchecked(mv);

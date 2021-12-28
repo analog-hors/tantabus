@@ -90,7 +90,7 @@ impl Default for StandardEvaluator {
 
 impl StandardEvaluator {
     pub fn evaluate(&self, board: &Board) -> Eval {
-        let phase = Self::game_phase(&board);
+        let phase = Self::game_phase(board);
         let us = self.evaluate_for_side(board, board.side_to_move(), phase);
         let them = self.evaluate_for_side(board, !board.side_to_move(), phase);
         Eval::cp(us - them)

@@ -150,7 +150,7 @@ fn parse_message(msg: &str) -> UciMessage {
         }
         None
     }
-    let mut msg = vampirc_uci::parse_one(&msg);
+    let mut msg = vampirc_uci::parse_one(msg);
     if let UciMessage::Unknown(raw_msg, _) = &msg {
         if let Some(parsed) = try_parse(raw_msg) {
             msg = parsed;
@@ -160,7 +160,7 @@ fn parse_message(msg: &str) -> UciMessage {
 }
 
 fn main() {
-    if std::env::args().skip(1).next().as_deref() == Some("bench") {
+    if std::env::args().nth(1).as_deref() == Some("bench") {
         bench::bench();
         return;
     }

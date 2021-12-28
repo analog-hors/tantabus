@@ -291,7 +291,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 GameStatus::Drawn => return Eval::DRAW,
                 GameStatus::Ongoing => {}
             }
-            if let Some(eval) = oracle::oracle(&board) {
+            if let Some(eval) = oracle::oracle(board) {
                 return eval;
             }
 
