@@ -18,7 +18,7 @@ mod bench;
 use options::UciOptionsHandler;
 use convert::*;
 
-const VERSION: &str = "1.0.1";
+const VERSION: &str = "2.0.0 dev";
 
 struct UciHandler {
     time_manager: StandardTimeManager,
