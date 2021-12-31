@@ -185,7 +185,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            for (i, mv) in moves.enumerate() {
+            for (i, (mv, _)) in moves.enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();
@@ -314,7 +314,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            for mv in self.quiet_movelist(board) {
+            for (mv, _) in self.quiet_movelist(board) {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let eval = -self.quiescence(
