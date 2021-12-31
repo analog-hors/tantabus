@@ -155,7 +155,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
-            if node != Node::Root && !(our_pieces & sliding_pieces).is_empty() {
+            let do_nmp = static_eval >= window.beta
+                && !(our_pieces & sliding_pieces).is_empty();
+            if node != Node::Root && do_nmp {
                 if let Some(child) = board.null_move() {
                     let mut window = window.null_window_beta();
                     let eval = -self.search_node(
