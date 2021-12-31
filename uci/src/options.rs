@@ -68,6 +68,14 @@ impl UciOptionsHandler {
                     * MEGABYTE
             }
             UciOptionConfig::Spin {
+                name: "Threads".to_owned(),
+                default: Some(1),
+                min: Some(1),
+                max: Some(1)
+            } => |_, _| {
+                // Implementation of the "Laziest SMP" algorithm
+            }
+            UciOptionConfig::Spin {
                 name: "PercentTimePerMove".to_owned(),
                 default: Some((options.percent_time_used_per_move * 100.0) as i64),
                 min: Some(0),
