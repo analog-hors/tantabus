@@ -46,7 +46,7 @@ fn lmr_calculate_reduction(i: usize) -> u8 {
     if i < 3 {
         0
     } else {
-        1
+        2
     }
 }
 
