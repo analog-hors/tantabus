@@ -35,15 +35,20 @@ const POSITIONS: &[&str] = &[
 const DEPTH: u8 = 8;
 const CACHE: usize = 16_000_000;
 
-struct BenchHandler(Option<SearchResult>);
+#[derive(Default)]
+struct BenchHandler {
+    nodes: u64,
+    prev_result: Option<SearchResult>
+}
 
 impl SearchHandler for BenchHandler {
     fn stop_search(&self) -> bool {
-        self.0.as_ref().map(|r| r.depth >= DEPTH).unwrap_or_default()
+        self.prev_result.as_ref().map(|r| r.depth >= DEPTH).unwrap_or_default()
     }
 
     fn new_result(&mut self, search_result: SearchResult) {
-        self.0 = Some(search_result);
+        self.nodes += search_result.nodes;
+        self.prev_result = Some(search_result);
     }
 }
 
@@ -52,7 +57,7 @@ pub fn bench() {
     let mut total_nodes = 0;
     for position in POSITIONS {
         let init_pos = position.parse().unwrap();
-        let mut handler = BenchHandler(None);
+        let mut handler = BenchHandler::default();
         let mut state = Engine::new(
             &mut handler,
             init_pos,
@@ -63,7 +68,7 @@ pub fn bench() {
         let start_time = Instant::now();
         state.search();
         total_time += start_time.elapsed();
-        total_nodes += handler.0.unwrap().nodes;
+        total_nodes += handler.nodes;
     }
     let nps = (total_nodes as f32 / total_time.as_secs_f32()) as u64;
     println!("{} nodes {} nps", total_nodes, nps);
