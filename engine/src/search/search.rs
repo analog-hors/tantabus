@@ -40,7 +40,7 @@ pub enum Node {
 }
 
 const NULL_MOVE_REDUCTION: u8 = 2;
-const LMR_MIN_DEPTH: u8 = 4;
+const LMR_MIN_DEPTH: u8 = 3;
 
 fn lmr_calculate_reduction(i: usize) -> u8 {
     if i < 3 {
