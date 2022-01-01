@@ -42,11 +42,13 @@ pub enum Node {
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 3;
 
-fn lmr_calculate_reduction(i: usize) -> u8 {
+fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
     if i < 3 {
         0
-    } else {
+    } else if depth < 7 {
         1
+    } else {
+        2
     }
 }
 
@@ -207,7 +209,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 };
                 let mut reduction = 0;
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
-                    reduction += lmr_calculate_reduction(i);
+                    reduction += lmr_calculate_reduction(i, depth);
                 }
                 let mut eval = -self.search_node(
                     child_node_type,
