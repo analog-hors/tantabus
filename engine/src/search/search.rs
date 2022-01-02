@@ -42,14 +42,18 @@ pub enum Node {
 const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 3;
 
-fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
-    if i < 3 {
+fn lmr_calculate_reduction(node: Node, i: usize, depth: u8) -> u8 {
+    let mut reduction: u8 = if i < 3 {
         0
     } else if depth < 7 {
-        1
-    } else {
         2
+    } else {
+        3
+    };
+    if node == Node::Pv {
+        reduction = reduction.saturating_sub(1);
     }
+    reduction
 }
 
 fn futility_margin(depth: u8) -> Option<Eval> {
@@ -209,7 +213,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 };
                 let mut reduction = 0;
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
-                    reduction += lmr_calculate_reduction(i, depth);
+                    reduction += lmr_calculate_reduction(node, i, depth);
                 }
                 let mut eval = -self.search_node(
                     child_node_type,
