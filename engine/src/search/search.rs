@@ -43,12 +43,17 @@ const NULL_MOVE_REDUCTION: u8 = 2;
 const LMR_MIN_DEPTH: u8 = 3;
 
 fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
-    if i < 3 {
-        0
-    } else if depth < 7 {
+    let base = if depth < 7 {
         1
     } else {
         2
+    };
+    if i < 3 {
+        0
+    } else if i < 13 {
+        base
+    } else {
+        base + 1
     }
 }
 
