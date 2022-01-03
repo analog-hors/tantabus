@@ -89,7 +89,7 @@ impl TimeManager for StandardTimeManager {
                 if let EvalKind::Centipawn(eval) = result.eval.kind() {
                     if let Some(prev_eval) = prev_eval.replace(eval) {
                         let eval_diff = (prev_eval - eval).abs();
-                        let multiplier = 1.05f32.powf((eval_diff as f32 / 25.0).clamp(-2.0, 2.0));
+                        let multiplier = 1.025f32.powf((eval_diff as f32 / 25.0).clamp(-2.0, 2.0));
                         *allocated = allocated.mul_f32(multiplier);
                     }
                 }
