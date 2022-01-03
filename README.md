@@ -28,8 +28,8 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Killer moves
     - History heuristic
 ### Evaluation
-- [Automatically tuned with currently private tuner on an Ethereal dataset](https://github.com/analog-hors/tantabus/commit/8c894ffeed7516b05be0a8e8db6f1d96aa83904c)
-- Piece square tables
+- [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://drive.google.com/file/d/1GfrNuDfD9Le-ZKKLxTHu0i3z6fbTn8JJ/view?usp=sharing)
+- King relative symmetric piece-square tables
     - Dedicated passed pawn tables
 - Mobility evaluation (simple pseudo-legal counting)
 - Tapered/phased evaluation (using Fruit-like method)
