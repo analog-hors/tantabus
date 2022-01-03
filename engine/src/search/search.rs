@@ -50,7 +50,7 @@ fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
     };
     if i < 3 {
         0
-    } else if i < 23 {
+    } else if i < 28 {
         base
     } else {
         base + 1
