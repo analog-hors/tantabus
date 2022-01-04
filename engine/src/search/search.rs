@@ -245,7 +245,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         killers.push(mv);
                         self.history_table
                             [board.side_to_move() as usize]
-                            [board.piece_on(mv.from).unwrap() as usize]
+                            [mv.from as usize]
                             [mv.to as usize]
                             += depth as u32 * depth as u32;
                     }
