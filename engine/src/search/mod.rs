@@ -98,7 +98,7 @@ impl<H: SearchHandler> Engine<H> {
                 search_result: None,
                 history,
                 killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
-                history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM],
+                history_table: [[[0; Square::NUM]; Square::NUM]; Color::NUM],
                 stats: SearchStats::default()
             };
 

@@ -21,7 +21,7 @@ pub struct SearchSharedState<H> {
 }
 
 pub(crate) type KillerEntry = ArrayVec<Move, 2>;
-pub(crate) type HistoryTable = [[[u32; Square::NUM]; Piece::NUM]; Color::NUM];
+pub(crate) type HistoryTable = [[[u32; Square::NUM]; Square::NUM]; Color::NUM];
 
 pub struct Searcher<'s, H> {
     pub shared: &'s mut SearchSharedState<H>,

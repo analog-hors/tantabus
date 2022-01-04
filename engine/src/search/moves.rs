@@ -124,7 +124,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 } else {
                     let history = self.history_table
                         [board.side_to_move() as usize]
-                        [board.piece_on(mv.from).unwrap() as usize]
+                        [mv.from as usize]
                         [mv.to as usize];
                     MoveScore::Quiet(history)
                 };
