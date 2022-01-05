@@ -23,12 +23,61 @@ pub struct SearchSharedState<H> {
 pub(crate) type KillerEntry = ArrayVec<Move, 2>;
 pub(crate) type HistoryTable = [[[u32; Square::NUM]; Piece::NUM]; Color::NUM];
 
-pub struct Searcher<'s, H> {
-    pub shared: &'s mut SearchSharedState<H>,
-    pub search_result: Option<Move>,
+pub struct SearchData {
     pub history: Vec<u64>,
     pub killers: [KillerEntry; u8::MAX as usize],
-    pub history_table: HistoryTable,
+    pub history_table: HistoryTable
+}
+
+impl SearchData {
+    pub fn new(history: Vec<u64>) -> Self {
+        const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
+        Self {
+            history: history.clone(),
+            killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
+            history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM]
+        }
+    }
+
+    pub fn search<H: SearchHandler>(
+        &mut self,
+        shared: &mut SearchSharedState<H>,
+        board: &Board,
+        depth: u8,
+        window: Window
+    ) -> Result<SearcherResult, ()> {
+        let mut searcher = Searcher {
+            shared,
+            data: self,
+            search_result: None,
+            stats: SearchStats::default()
+        };
+        let eval = searcher.search_node(
+            Node::Root,
+            &board,
+            depth,
+            0,
+            window
+        )?;
+        Ok(SearcherResult {
+            mv: searcher.search_result.unwrap(),
+            eval,
+            stats: searcher.stats
+        })
+    }
+}
+
+pub struct Searcher<'s, H> {
+    pub shared: &'s mut SearchSharedState<H>,
+    pub data: &'s mut SearchData,
+    pub search_result: Option<Move>,
+    pub stats: SearchStats
+}
+
+#[derive(Debug, Clone)]
+pub struct SearcherResult {
+    pub mv: Move,
+    pub eval: Eval,
     pub stats: SearchStats
 }
 
@@ -77,7 +126,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
-        self.history.push(board.hash());
+        self.data.history.push(board.hash());
         let result = (|| {
             self.stats.seldepth = self.stats.seldepth.max(ply_index);
 
@@ -178,7 +227,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let moves = self.new_movelist(
                 board,
                 pv_move,
-                self.killers[ply_index as usize].clone()
+                self.data.killers[ply_index as usize].clone()
             );
 
             let futile = if let Some(margin) = futility_margin(depth) {
@@ -238,12 +287,12 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 window.narrow_alpha(eval);
                 if window.empty() {
                     if move_is_quiet(mv, &board) {
-                        let killers = &mut self.killers[ply_index as usize];
+                        let killers = &mut self.data.killers[ply_index as usize];
                         if killers.is_full() {
                             killers.remove(0);
                         }
                         killers.push(mv);
-                        self.history_table
+                        self.data.history_table
                             [board.side_to_move() as usize]
                             [board.piece_on(mv.from).unwrap() as usize]
                             [mv.to as usize]
@@ -276,7 +325,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             Ok(best_eval)
         })();
-        self.history.pop();
+        self.data.history.pop();
         result
     }
 
@@ -341,7 +390,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
     }
 
     fn repetitions(&self, board: &Board) -> usize {
-        self.history.iter()
+        self.data.history.iter()
             .rev()
             .take(board.halfmove_clock() as usize + 1)
             .step_by(2) // Every second ply so it's our turn
