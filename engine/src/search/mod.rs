@@ -89,21 +89,12 @@ impl<H: SearchHandler> Engine<H> {
     }
 
     pub fn search(&mut self) {
-        const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
         let mut prev_eval = None;
-        for depth in 1..=self.options.max_depth.get() {
-            let history = self.shared.history.clone();
-            let mut searcher = Searcher {
-                shared: &mut self.shared,
-                search_result: None,
-                history,
-                killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
-                history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM],
-                stats: SearchStats::default()
-            };
 
+        let mut search_data = SearchData::new(self.shared.history.clone());
+        for depth in 1..=self.options.max_depth.get() {
             let mut windows = [75].iter().copied().map(Eval::cp);
-            let eval = loop {
+            let result = loop {
                 let mut aspiration_window = Window::INFINITY;
                 if depth > 3 {
                     if let Some(prev_eval) = prev_eval {
@@ -112,25 +103,22 @@ impl<H: SearchHandler> Engine<H> {
                         }
                     }
                 }
-                let eval = searcher.search_node(
-                    Node::Root,
+                let result = search_data.search(
+                    &mut self.shared,
                     &self.board,
                     depth,
-                    0,
                     aspiration_window
                 );
-                if let Ok(eval) = eval {
-                    if !aspiration_window.contains(eval) {
+                if let Ok(result) = &result {
+                    if !aspiration_window.contains(result.eval) {
                         continue;
                     }
                 }
-                break eval;
+                break result;
             };
 
-            if let Ok(eval) = eval {
+            if let Ok(SearcherResult { mv, eval, stats }) = result {
                 prev_eval = Some(eval);
-                let mv = searcher.search_result.unwrap();
-                let stats = searcher.stats;
                 let mut principal_variation = Vec::new();
                 let mut history = self.shared.history.clone();
                 let mut board = self.board.clone();

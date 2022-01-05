@@ -122,7 +122,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let score = if killers.contains(&mv) {
                     MoveScore::Killer
                 } else {
-                    let history = self.history_table
+                    let history = self.data.history_table
                         [board.side_to_move() as usize]
                         [board.piece_on(mv.from).unwrap() as usize]
                         [mv.to as usize];
