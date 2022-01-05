@@ -147,7 +147,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         }
     }
 
-    pub fn quiet_movelist(&mut self, board: &Board) ->  MoveList {
+    pub fn qsearch_movelist(&mut self, board: &Board) ->  MoveList {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());

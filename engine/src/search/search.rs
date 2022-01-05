@@ -316,7 +316,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            for (mv, _) in self.quiet_movelist(board) {
+            for (mv, _) in self.qsearch_movelist(board) {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let eval = -self.quiescence(
