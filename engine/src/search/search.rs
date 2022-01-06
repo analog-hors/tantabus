@@ -154,7 +154,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     if window.empty() {
                         if move_is_quiet(entry.best_move, &board) {
                             let history = self.data.history_table.get_mut(board, entry.best_move);
-                            *history = update_history(*history, depth);
+                            *history = update_history(*history, entry.depth);
                         }
                         if node != Node::Root {
                             return Ok(entry.eval);
