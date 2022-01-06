@@ -267,13 +267,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         let history = self.data.history_table.get_mut(board, mv);
                         let change = depth as i32 * depth as i32;
                         // Has the effect of decreasing the change as the history approaches the max value
-                        let decay = change * *history / 512;
+                        let decay = change * *history / 32768;
                         *history = *history + change - decay;
                         for &(mv, _) in moves.yielded() {
                             if move_is_quiet(mv, &board) {
                                 let history = self.data.history_table.get_mut(board, mv);
                                 let change = depth as i32 * depth as i32;
-                                let decay = change * *history / 512;
+                                let decay = change * *history / 32768;
                                 *history = *history - change - decay;
                             }
                         }
