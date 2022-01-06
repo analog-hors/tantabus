@@ -28,3 +28,8 @@ pub fn reverse_futility_margin(depth: u8) -> Option<Eval> {
         None
     }
 }
+
+pub fn update_history(old: u32, depth: u8) -> u32 {
+    let depth = depth as u32;
+    old + depth * depth
+}

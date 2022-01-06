@@ -151,8 +151,12 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
                         TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
                     }
-                    if node != Node::Root && window.empty() {
-                        return Ok(entry.eval);
+                    if window.empty() {
+                        let history = self.data.history_table.get_mut(board, entry.best_move);
+                        *history = update_history(*history, depth);
+                        if node != Node::Root {
+                            return Ok(entry.eval);
+                        }
                     }
                 }
             }
@@ -265,7 +269,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         }
                         killers.push(mv);
                         let history = self.data.history_table.get_mut(board, mv);
-                        *history += depth as u32 * depth as u32;
+                        *history = update_history(*history, depth);
                     }
                     break;
                 }
