@@ -7,11 +7,20 @@ use super::cache::*;
 use super::helpers::move_is_quiet;
 use super::window::Window;
 use super::oracle;
+use super::history::HistoryTable;
+use super::formulas::*;
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchStats {
     pub nodes: u64,
     pub seldepth: u8
+}
+
+#[derive(Debug, Clone)]
+pub struct SearcherResult {
+    pub mv: Move,
+    pub eval: Eval,
+    pub stats: SearchStats
 }
 
 pub struct SearchSharedState<H> {
@@ -21,7 +30,6 @@ pub struct SearchSharedState<H> {
 }
 
 pub(crate) type KillerEntry = ArrayVec<Move, 2>;
-pub(crate) type HistoryTable = [[[u32; Square::NUM]; Piece::NUM]; Color::NUM];
 
 pub struct SearchData {
     pub history: Vec<u64>,
@@ -35,7 +43,7 @@ impl SearchData {
         Self {
             history: history.clone(),
             killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
-            history_table: [[[0; Square::NUM]; Piece::NUM]; Color::NUM]
+            history_table: HistoryTable::new()
         }
     }
 
@@ -74,47 +82,11 @@ pub struct Searcher<'s, H> {
     pub stats: SearchStats
 }
 
-#[derive(Debug, Clone)]
-pub struct SearcherResult {
-    pub mv: Move,
-    pub eval: Eval,
-    pub stats: SearchStats
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Node {
     Root,
     Pv,
     Normal
-}
-
-const NULL_MOVE_REDUCTION: u8 = 2;
-const LMR_MIN_DEPTH: u8 = 3;
-
-fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
-    if i < 3 {
-        0
-    } else if depth < 7 {
-        1
-    } else {
-        2
-    }
-}
-
-fn futility_margin(depth: u8) -> Option<Eval> {
-    Some(Eval::cp(match depth {
-        1 => 300,
-        2 => 600,
-        _ => return None
-    }))
-}
-
-fn reverse_futility_margin(depth: u8) -> Option<Eval> {
-    if depth < 5 {
-        Some(Eval::cp(100 * depth as i16))
-    } else {
-        None
-    }
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
@@ -292,11 +264,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                             killers.remove(0);
                         }
                         killers.push(mv);
-                        self.data.history_table
-                            [board.side_to_move() as usize]
-                            [board.piece_on(mv.from).unwrap() as usize]
-                            [mv.to as usize]
-                            += depth as u32 * depth as u32;
+                        let history = self.data.history_table.get_mut(board, mv);
+                        *history += depth as u32 * depth as u32;
                     }
                     break;
                 }
