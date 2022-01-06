@@ -265,7 +265,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         }
                         killers.push(mv);
                         let history = self.data.history_table.get_mut(board, mv);
-                        *history += depth as u32 * depth as u32;
+                        let change = depth as u32 * depth as u32;
+                        // Has the effect of decreasing the change as the history approaches the max value
+                        let decay = change * *history / 512;
+                        *history = *history + change - decay;
                     }
                     break;
                 }
