@@ -152,8 +152,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
                     }
                     if window.empty() {
-                        let history = self.data.history_table.get_mut(board, entry.best_move);
-                        *history = update_history(*history, depth);
+                        if move_is_quiet(entry.best_move, &board) {
+                            let history = self.data.history_table.get_mut(board, entry.best_move);
+                            *history = update_history(*history, depth);
+                        }
                         if node != Node::Root {
                             return Ok(entry.eval);
                         }
