@@ -88,17 +88,18 @@ fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
     LosingCapture(Eval),
-    Quiet(u32),
+    Quiet(i32),
     Killer,
     Capture(Eval),
     Pv
 }
 
 pub struct MoveList {
-    move_list: ArrayVec<(Move, MoveScore), 218>
+    move_list: ArrayVec<(Move, MoveScore), 218>,
+    yielded: usize
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
@@ -140,7 +141,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
             false
         });
         MoveList {
-            move_list
+            move_list,
+            yielded: 0
         }
     }
 
@@ -161,8 +163,15 @@ impl<H: SearchHandler> Searcher<'_, H> {
             false
         });
         MoveList {
-            move_list
+            move_list,
+            yielded: 0
         }
+    }
+}
+
+impl MoveList {
+    pub fn yielded(&self) -> &[(Move, MoveScore)] {
+        &self.move_list[..self.yielded]
     }
 }
 
@@ -170,14 +179,18 @@ impl Iterator for MoveList {
     type Item = (Move, MoveScore);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let max_index = self.move_list.iter()
+        let to_yield = &mut self.move_list[self.yielded..];
+        let max_index = to_yield
+            .iter()
             .enumerate()
             .max_by_key(|(_, (_, score))| score)
             .map(|(i, _)| i);
         if let Some(max_index) = max_index {
-            Some(self.move_list.swap_remove(max_index))
-        } else {
-            None
+            to_yield.swap(max_index, 0);
+            let result = *to_yield.first().unwrap();
+            self.yielded += 1;
+            return Some(result);
         }
+        None
     }
 }

@@ -196,7 +196,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 }
             }
-            let moves = self.new_movelist(
+            let mut moves = self.new_movelist(
                 board,
                 pv_move,
                 self.data.killers[ply_index as usize].clone()
@@ -208,7 +208,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            for (i, (mv, _)) in moves.enumerate() {
+            for (i, (mv, _)) in (&mut moves).enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();
@@ -265,10 +265,18 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         }
                         killers.push(mv);
                         let history = self.data.history_table.get_mut(board, mv);
-                        let change = depth as u32 * depth as u32;
+                        let change = depth as i32 * depth as i32;
                         // Has the effect of decreasing the change as the history approaches the max value
                         let decay = change * *history / 512;
                         *history = *history + change - decay;
+                        for &(mv, _) in moves.yielded() {
+                            if move_is_quiet(mv, &board) {
+                                let history = self.data.history_table.get_mut(board, mv);
+                                let change = depth as i32 * depth as i32;
+                                let decay = change * *history / 512;
+                                *history = *history - change - decay;
+                            }
+                        }
                     }
                     break;
                 }
