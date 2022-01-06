@@ -32,7 +32,7 @@ pub struct SearchSharedState<H> {
 pub(crate) type KillerEntry = ArrayVec<Move, 2>;
 
 pub struct SearchData {
-    pub history: Vec<u64>,
+    pub game_history: Vec<u64>,
     pub killers: [KillerEntry; u8::MAX as usize],
     pub history_table: HistoryTable
 }
@@ -41,7 +41,7 @@ impl SearchData {
     pub fn new(history: Vec<u64>) -> Self {
         const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
         Self {
-            history: history.clone(),
+            game_history: history.clone(),
             killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
             history_table: HistoryTable::new()
         }
@@ -98,7 +98,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
-        self.data.history.push(board.hash());
+        self.data.game_history.push(board.hash());
         let result = (|| {
             self.stats.seldepth = self.stats.seldepth.max(ply_index);
 
@@ -294,7 +294,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             Ok(best_eval)
         })();
-        self.data.history.pop();
+        self.data.game_history.pop();
         result
     }
 
@@ -359,7 +359,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
     }
 
     fn repetitions(&self, board: &Board) -> usize {
-        self.data.history.iter()
+        self.data.game_history.iter()
             .rev()
             .take(board.halfmove_clock() as usize + 1)
             .step_by(2) // Every second ply so it's our turn
