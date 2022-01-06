@@ -265,7 +265,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         }
                         killers.push(mv);
                         let history = self.data.history_table.get_mut(board, mv);
-                        *history += depth as u32 * depth as u32;
+                        *history = update_history(*history, depth);
                     }
                     break;
                 }
