@@ -7,7 +7,7 @@ pub const LMR_MIN_DEPTH: u8 = 3;
 pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
     let mut reduction = 3;
     if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
-        reduction += ((eval - beta) / 200).min(2) as u8;
+        reduction += ((eval - beta) / 100).min(2) as u8;
     }
     reduction
 }
