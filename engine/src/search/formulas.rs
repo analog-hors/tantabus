@@ -1,6 +1,6 @@
 use crate::eval::Eval;
 
-pub const NULL_MOVE_REDUCTION: u8 = 3;
+pub const NULL_MOVE_REDUCTION: u8 = 4;
 pub const LMR_MIN_DEPTH: u8 = 3;
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
