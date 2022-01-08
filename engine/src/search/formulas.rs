@@ -1,7 +1,16 @@
 use crate::eval::Eval;
 
-pub const NULL_MOVE_REDUCTION: u8 = 3;
+use super::window::Window;
+
 pub const LMR_MIN_DEPTH: u8 = 3;
+
+pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
+    let mut reduction = 3;
+    if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
+        reduction += ((eval - beta) / 200).min(2) as u8;
+    }
+    reduction
+}
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
     if i < 3 {

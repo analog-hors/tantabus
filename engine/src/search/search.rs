@@ -183,10 +183,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
             if node != Node::Root && do_nmp {
                 if let Some(child) = board.null_move() {
                     let mut window = window.null_window_beta();
+                    let reduction = nmp_calculate_reduction(static_eval, window);
                     let eval = -self.search_node(
                         Node::Normal,
                         &child,
-                        (depth - 1).saturating_sub(NULL_MOVE_REDUCTION),
+                        (depth - 1).saturating_sub(reduction),
                         ply_index + 1,
                         -window
                     )?;
