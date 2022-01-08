@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 indexmap = "1"
 tantabus = { path = "../engine" }
-cozy-chess = "0.1"
+cozy-chess = "0.2.0"
 vampirc-uci = { version = "0.11" }
