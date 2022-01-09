@@ -73,6 +73,14 @@ impl Eval {
             v => EvalKind::Centipawn(v),
         }
     }
+
+    pub const fn as_cp(self) -> Option<i16> {
+        if let EvalKind::Centipawn(cp) = self.kind() {
+            Some(cp)
+        } else {
+            None
+        }
+    }
 }
 
 macro_rules! impl_math_ops {
