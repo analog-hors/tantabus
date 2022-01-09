@@ -13,13 +13,14 @@ pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
 }
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8) -> u8 {
-    if i < 3 {
-        0
-    } else if depth < 7 {
-        1
-    } else {
-        2
+    let mut reduction = 0;
+    if i >= 3 {
+        reduction += 1;
+        if depth >= 7 || i >= 28 {
+            reduction += 1;
+        }
     }
+    reduction
 }
 
 pub fn futility_margin(depth: u8) -> Option<Eval> {
