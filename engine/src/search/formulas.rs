@@ -5,8 +5,8 @@ use super::window::Window;
 pub const LMR_MIN_DEPTH: u8 = 3;
 
 pub fn nmp_calculate_reduction(depth: u8, static_eval: Eval, window: Window) -> u8 {
-    let mut reduction = 3;
-    if depth >= 7 {
+    let mut reduction = 2;
+    if depth >= 6 {
         reduction += 1;
     }
     if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
