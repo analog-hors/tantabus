@@ -318,7 +318,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return eval;
             }
 
-            if let Some(entry) = self.shared.cache_table.get(board) {
+            let cache_entry = self.shared.cache_table.get(board);
+            if let Some(entry) = cache_entry {
                 match entry.kind {
                     TableEntryKind::Exact => return entry.eval,
                     TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
@@ -335,7 +336,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            for (mv, _) in self.qsearch_movelist(board) {
+            let pv_move = cache_entry.map(|e| e.best_move);
+            for (mv, _) in self.qsearch_movelist(pv_move, board) {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let eval = -self.quiescence(

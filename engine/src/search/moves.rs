@@ -102,13 +102,14 @@ pub struct MoveList {
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
-    pub fn new_movelist(&mut self, board: &Board, pv_move: Option<Move>, killers: KillerEntry) ->  MoveList {
+    pub fn new_movelist(&mut self, board: &Board, pv_move: Option<Move>, killers: KillerEntry) -> MoveList {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());
         board.generate_moves(|mut moves| {
             if let Some(pv_move) = pv_move {
                 if moves.from == pv_move.from && moves.to.has(pv_move.to) {
+                    //TODO there's a bug with promotion here.
                     moves.to ^= pv_move.to.bitboard();
                     move_list.push((pv_move, MoveScore::Pv));
                 }
@@ -144,7 +145,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         }
     }
 
-    pub fn qsearch_movelist(&mut self, board: &Board) ->  MoveList {
+    pub fn qsearch_movelist(&mut self, pv_move: Option<Move>, board: &Board) ->  MoveList {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());
@@ -152,6 +153,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let mut capture_moves = moves;
             capture_moves.to &= their_pieces;
             for mv in capture_moves {
+                if Some(mv) == pv_move {
+                    move_list.push((mv, MoveScore::Pv));
+                    continue;
+                }
                 let eval = static_exchange_evaluation(board, mv);
                 if eval < Eval::ZERO {
                     continue;
