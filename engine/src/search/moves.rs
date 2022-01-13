@@ -1,7 +1,7 @@
 use cozy_chess::*;
 use arrayvec::ArrayVec;
 
-use crate::eval::{EVALUATOR, Eval};
+use crate::eval::*;
 
 use super::SearchHandler;
 use super::search::{KillerEntry, Searcher};
@@ -34,7 +34,7 @@ fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     let mut captures = ArrayVec::<Eval, 32>::new();
     'exchange: loop {
         //"Capture" victim
-        captures.push(EVALUATOR.piece_value(victim));
+        captures.push(Eval::cp(*PIECE_VALUES.get(victim)));
 
         //"Move" attacker to target square
         let attacker_bitboard = attacker_sq.bitboard();

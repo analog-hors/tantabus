@@ -1,6 +1,7 @@
 use cozy_chess::*;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KingRelativePst(pub [[[i16; 4]; 8]; 2]);
 
 impl KingRelativePst {
@@ -19,9 +20,14 @@ impl KingRelativePst {
         let (on_king_half, rank, file) = Self::key(side, king, square);
         self.0[on_king_half][rank][file]
     }
+
+    pub fn get_mut(&mut self, side: Color, king: Square, square: Square) -> &mut i16 {
+        let (on_king_half, rank, file) = Self::key(side, king, square);
+        &mut self.0[on_king_half][rank][file]
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Pst(pub [[i16; 8]; 8]);
 
 impl Pst {
@@ -34,9 +40,14 @@ impl Pst {
         let (rank, file) = Self::key(side, square);
         self.0[rank][file]
     }
+
+    pub fn get_mut(&mut self, side: Color, square: Square) -> &mut i16 {
+        let (rank, file) = Self::key(side, square);
+        &mut self.0[rank][file]
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PstEvalSet {
     pub pawn: KingRelativePst,
     pub knight: KingRelativePst,
@@ -60,6 +71,22 @@ impl PstEvalSet {
                 Piece::King => unreachable!()
             };
             table.get(color, king, square)
+        }
+    }
+
+    pub fn get_mut(&mut self, piece: Piece, color: Color, king: Square, square: Square) -> &mut i16 {
+        if piece == Piece::King {
+            self.king.get_mut(color, square)
+        } else {
+            let table = match piece {
+                Piece::Pawn => &mut self.pawn,
+                Piece::Knight => &mut self.knight,
+                Piece::Bishop => &mut self.bishop,
+                Piece::Rook => &mut self.rook,
+                Piece::Queen => &mut self.queen,
+                Piece::King => unreachable!()
+            };
+            table.get_mut(color, king, square)
         }
     }
 }
