@@ -138,7 +138,7 @@ impl StandardEvaluator {
                         get_bishop_moves(square, occupied) |
                         get_rook_moves(square, occupied)
                     ) & !our_pieces,
-                    Piece::King => get_knight_moves(square) & !our_pieces
+                    Piece::King => get_king_moves(square) & !our_pieces
                 };
                 let mobility = approx_moves.popcnt() as usize;
                 midgame_value += midgame_mobility[mobility];
