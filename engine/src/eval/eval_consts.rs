@@ -4,11 +4,11 @@ use super::{Evaluator, EvalTerms};
 use super::eval_set::PieceEvalSet;
 
 pub const PIECE_VALUES: PieceEvalSet<i16> = PieceEvalSet {
-    pawn: 100,
-    knight: 320,
+    pawn: 92,
+    knight: 322,
     bishop: 330,
-    rook: 500,
-    queen: 900,
+    rook: 487,
+    queen: 955,
     king: 0,
 };
 
