@@ -13,7 +13,8 @@ pub struct EvalTerms {
     pub passed_pawns: KingRelativePst,
     pub bishop_pair: i16,
     pub rook_on_open_file: i16,
-    pub rook_on_semiopen_file: i16
+    pub rook_on_semiopen_file: i16,
+    pub isolated_pawns: [i16; 8]
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +81,7 @@ impl Evaluator {
         self.add_psqt_terms(&mut ctx);
         self.add_mobility_terms(&mut ctx);
         self.add_passed_pawn_terms(&mut ctx);
+        self.add_isolated_pawn_terms(&mut ctx);
         self.add_rook_on_open_file_terms(&mut ctx);
         self.add_bishop_pair_terms(&mut ctx);
 
@@ -149,8 +151,8 @@ impl Evaluator {
         let promotion_rank = Rank::Eighth.relative_to(ctx.color);
 
         for pawn in our_pawns {
-            let telestop = Square::new(pawn.file(), promotion_rank);
-            let front_span = get_between_rays(pawn, telestop);
+            let promo_square = Square::new(pawn.file(), promotion_rank);
+            let front_span = get_between_rays(pawn, promo_square);
             let mut blocker_mask = front_span;
             for attack in get_pawn_attacks(pawn, ctx.color) {
                 let telestop = Square::new(attack.file(), promotion_rank);
@@ -166,6 +168,22 @@ impl Evaluator {
                 });
                 *ctx.mg += self.midgame.passed_pawns.get(ctx.color, our_king, pawn);
                 *ctx.eg += self.endgame.passed_pawns.get(ctx.color, our_king, pawn);
+            }
+        }
+    }
+
+    fn add_isolated_pawn_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
+        let our_pieces = ctx.board.colors(ctx.color);
+        let pawns = ctx.board.pieces(Piece::Pawn);
+        let our_pawns = our_pieces & pawns;
+
+        for pawn in our_pawns {
+            if (pawn.file().adjacent() & our_pawns).is_empty() {
+                ctx.trace.trace(|terms| {
+                    terms.isolated_pawns[pawn.file() as usize] += 1;
+                });
+                *ctx.mg += self.midgame.isolated_pawns[pawn.file() as usize];
+                *ctx.eg += self.endgame.isolated_pawns[pawn.file() as usize];
             }
         }
     }
