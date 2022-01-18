@@ -95,7 +95,7 @@ impl<H: SearchHandler> Engine<H> {
 
         let mut search_data = SearchData::new(self.shared.history.clone());
         for depth in 1..=self.options.max_depth.get() {
-            let mut windows = [75].iter().copied().map(Eval::cp);
+            let mut windows = [100].iter().copied().map(Eval::cp);
             let result = loop {
                 let mut aspiration_window = Window::INFINITY;
                 if depth > 3 {
