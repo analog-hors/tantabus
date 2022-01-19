@@ -197,7 +197,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 }
             }
-            let moves = self.new_movelist(
+            let mut moves = self.new_movelist(
                 board,
                 pv_move,
                 self.data.killers[ply_index as usize].clone()
@@ -209,7 +209,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            for (i, (mv, _)) in moves.enumerate() {
+            for (i, (mv, _)) in (&mut moves).enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();
