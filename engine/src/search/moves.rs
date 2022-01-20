@@ -90,7 +90,6 @@ fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
-    LosingCapture(Eval),
     Quiet(u32),
     Killer,
     Capture(Eval),
@@ -130,11 +129,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             for mv in capture_moves {
                 let eval = static_exchange_evaluation(board, mv);
-                let score = if eval >= Eval::ZERO {
-                    MoveScore::Capture(eval)
-                } else {
-                    MoveScore::LosingCapture(eval)
-                };
+                let score = MoveScore::Capture(eval);
                 move_list.push((mv, score));
             }
             false
