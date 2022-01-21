@@ -124,7 +124,7 @@ impl<H: SearchHandler> Engine<H> {
                 let mut principal_variation = Vec::new();
                 let mut history = self.shared.history.clone();
                 let mut board = self.board.clone();
-                while let Some(entry) = self.shared.cache_table.get(&board) {
+                while let Some(entry) = self.shared.cache_table.get(&board, 0) {
                     history.push(board.hash());
                     board.play_unchecked(entry.best_move);
                     principal_variation.push(entry.best_move);
