@@ -269,11 +269,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         let mut change = depth as i32 * depth as i32;
                         change -= change * *history / 512;
                         *history += change;
-                        for &(mv, _) in moves.yielded() {
-                            if move_is_quiet(mv, &board) {
-                                let history = self.data.history_table.get_mut(board, mv);
+                        for &(prev_mv, _) in moves.yielded() {
+                            if prev_mv != mv && move_is_quiet(prev_mv, &board) {
+                                let history = self.data.history_table.get_mut(board, prev_mv);
                                 let mut change = depth as i32 * depth as i32;
-                                change -= change * *history / 512;
+                                change += change * *history / 512;
                                 *history -= change;
                             }
                         }
