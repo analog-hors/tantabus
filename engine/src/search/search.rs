@@ -140,7 +140,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             let mut pv_move = None;
-            let cache_entry = self.shared.cache_table.get(&board);
+            let cache_entry = self.shared.cache_table.get(&board, ply_index);
             if let Some(entry) = cache_entry {
                 pv_move = Some(entry.best_move);
                 if entry.depth >= depth {
@@ -157,10 +157,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let static_eval = cache_entry.map_or_else(
-                || EVALUATOR.evaluate(board),
-                |e| e.eval
-            );
+            let static_eval = cache_entry
+                .and_then(|e| {
+                    if e.eval.as_cp().is_some() {
+                        Some(e.eval)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| EVALUATOR.evaluate(board));
+
             if !matches!(node, Node::Root | Node::Pv) {
                 if let Some(margin) = reverse_futility_margin(depth) {
                     let eval_estimate = static_eval.saturating_sub(margin);
@@ -273,15 +279,15 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
             let best_move = best_move.unwrap();
 
-            self.shared.cache_table.set(&board, TableEntry {
+            self.shared.cache_table.set(&board, ply_index, TableEntry {
                 kind: match best_eval {
-                    //No move was capable of raising alpha.
-                    //The actual value might be worse than this.
+                    // No move was capable of raising alpha.
+                    // The actual value might be worse than this.
                     _ if best_eval <= init_window.alpha => TableEntryKind::UpperBound,
-                    //The move was too good and this is a cut node.
-                    //The value might be even better if it were not cut off.
+                    // The move was too good and this is a cut node.
+                    // The value might be even better if it were not cut off.
                     _ if best_eval >= window.beta => TableEntryKind::LowerBound,
-                    //It's in the window. This is an exact value.
+                    // It's in the window. This is an exact value.
                     _ => TableEntryKind::Exact
                 },
                 eval: best_eval,
@@ -318,7 +324,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return eval;
             }
 
-            if let Some(entry) = self.shared.cache_table.get(board) {
+            if let Some(entry) = self.shared.cache_table.get(board, ply_index) {
                 match entry.kind {
                     TableEntryKind::Exact => return entry.eval,
                     TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),

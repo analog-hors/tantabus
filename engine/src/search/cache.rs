@@ -33,7 +33,7 @@ pub enum CacheTableError {
 }
 
 impl CacheTable {
-    ///Create a cache table with a given number of entries.
+    /// Create a cache table with a given number of entries.
     pub fn new_with_entries(entries: NonZeroU32) -> Self {
         Self {
             table: vec![None; entries.get() as usize].into_boxed_slice(),
@@ -60,22 +60,28 @@ impl CacheTable {
         ((hash as u32 as u64 * self.capacity() as u64) >> u32::BITS) as usize
     }
 
-    pub fn get(&self, board: &Board) -> Option<TableEntry> {
+    pub fn get(&self, board: &Board, ply_index: u8) -> Option<TableEntry> {
         let hash = board.hash();
         let index = self.hash_to_index(hash);
-        if let Some((entry_hash, entry)) = self.table[index] {
+        if let Some((entry_hash, mut entry)) = self.table[index] {
             if entry_hash == hash {
+                entry.eval = match entry.eval.kind() {
+                    EvalKind::Centipawn(_) => entry.eval,
+                    EvalKind::MateIn(p) => Eval::mate_in(p + ply_index),
+                    EvalKind::MatedIn(p) => Eval::mated_in(p + ply_index),
+                };
                 return Some(entry);
             }
         }
         None
     }
 
-    pub fn set(
-        &mut self,
-        board: &Board,
-        entry: TableEntry
-    ) {
+    pub fn set(&mut self, board: &Board, ply_index: u8, mut entry: TableEntry) {
+        entry.eval = match entry.eval.kind() {
+            EvalKind::Centipawn(_) => entry.eval,
+            EvalKind::MateIn(p) => Eval::mate_in(p - ply_index),
+            EvalKind::MatedIn(p) => Eval::mated_in(p - ply_index),
+        };
         let hash = board.hash();
         let index = self.hash_to_index(hash);
         let old = &mut self.table[index];
