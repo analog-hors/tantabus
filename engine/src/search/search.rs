@@ -146,15 +146,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let cache_entry = self.shared.cache_table.get(&board, ply_index);
             if let Some(entry) = cache_entry {
                 pv_move = Some(entry.best_move);
-                if entry.depth >= depth {
+                if !matches!(node, Node::Root | Node::Pv) && entry.depth >= depth {
                     match entry.kind {
-                        TableEntryKind::Exact => if node != Node::Root {
-                            return Ok(entry.eval);
-                        },
+                        TableEntryKind::Exact => return Ok(entry.eval),
                         TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
                         TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
                     }
-                    if node != Node::Root && window.empty() {
+                    if window.empty() {
                         return Ok(entry.eval);
                     }
                 }
