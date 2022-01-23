@@ -1,6 +1,8 @@
 use cozy_chess::*;
 use serde::{Serialize, Deserialize};
 
+// CITE: This style of "king relative" PST was suggested to me by the Berserk author.
+// https://github.com/jhonnold/berserk/blob/53254ac839f430ba98749f4520ff03bf5d86b208/src/eval.c#L160-L190
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KingRelativePst(pub [[[i16; 4]; 8]; 2]);
 

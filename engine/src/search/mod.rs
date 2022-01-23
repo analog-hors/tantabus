@@ -97,6 +97,8 @@ impl<H: SearchHandler> Engine<H> {
         for depth in 1..=self.options.max_depth.get() {
             let mut windows = [75].iter().copied().map(Eval::cp);
             let result = loop {
+                // CITE: Aspiration window.
+                // https://www.chessprogramming.org/Aspiration_Windows
                 let mut aspiration_window = Window::INFINITY;
                 if depth > 3 {
                     if let Some(prev_eval) = prev_eval {
