@@ -212,7 +212,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 }
             }
-            let moves = self.new_movelist(
+            let mut moves = self.new_movelist(
                 board,
                 pv_move,
                 self.data.killers[ply_index as usize].clone()
@@ -227,7 +227,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            for (i, (mv, _)) in moves.enumerate() {
+            for (i, (mv, _)) in (&mut moves).enumerate() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();
@@ -251,7 +251,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
-                    reduction += lmr_calculate_reduction(i, depth);
+                    let history = self.data.history_table.get(board, mv);
+                    reduction += lmr_calculate_reduction(i, depth, history);
                 }
                 let mut eval = -self.search_node(
                     child_node_type,
@@ -289,8 +290,14 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         killers.push(mv);
                         // CITE: History heuristic.
                         // https://www.chessprogramming.org/History_Heuristic
-                        let history = self.data.history_table.get_mut(board, mv);
-                        *history += depth as u32 * depth as u32;
+                        self.data.history_table.update(board, mv, depth, true);
+                    }
+                    // CITE: We additionally punish the history of quiet moves that don't produce cutoffs.
+                    // Suggested by the Black Marlin author and additionally observed in MadChess.
+                    for &(prev_mv, _) in moves.yielded() {
+                        if prev_mv != mv && move_is_quiet(prev_mv, &board) {
+                            self.data.history_table.update(board, prev_mv, depth, false);
+                        }
                     }
                     break;
                 }
