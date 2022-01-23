@@ -8,6 +8,8 @@ pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
     let mut reduction = 3;
     if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
         if eval >= beta {
+            // CITE: This kind of reduction increase when eval >= beta was first observed in MadChess.
+            // https://www.madchess.net/2021/02/09/madchess-3-0-beta-f231dac-pvs-and-null-move-improvements/
             reduction += ((eval as i32 - beta as i32) / 100).min(2) as u8;
         }
     }

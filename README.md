@@ -24,6 +24,8 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Negative SEE moves pruned in QSearch
 - Move ordering
     - Hash move
+    - Capture moves
+        - Losing captures delayed to last
     - Static exchange evaluation
     - Killer moves
     - History heuristic
@@ -32,6 +34,18 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - King relative symmetric piece-square tables
     - Dedicated passed pawn tables
 - Mobility evaluation (simple pseudo-legal counting)
+- Bishop pair bonus
+- Rook on open file bonus
+- Rook on semiopen file bonus
 - Tapered/phased evaluation (using Fruit-like method)
 ### Time management
 - Uses a fixed percentage of time left
+
+## Thanks
+Many engines have been very useful resources in the development of Tantabus.<br>
+A (potentially incomplete) list of citations is listed in the code, annotated with `// CITE` comments.<br>
+A (potentially incomplete) list of special thanks in no particular order:
+- [Pali (Black Marlin author)](https://github.com/dsekercioglu/blackmarlin), for assisting me with various things during the development of Tantabus on top of being like, cool and stuff.
+- [Jay (Berserk author)](https://github.com/jhonnold/berserk) for hosting the OpenBench instance that Tantabus develops on.
+- [Andrew (OpenBench and Ethereal author)](https://github.com/AndyGrant/Ethereal) for creating OpenBench. It has been an immensely helpful tool for engine development.
+- Other people I probably forgot about.

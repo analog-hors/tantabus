@@ -90,6 +90,8 @@ pub enum Node {
 }
 
 impl<H: SearchHandler> Searcher<'_, H> {
+    // CITE: The base of this engine is built on principal variation search.
+    // https://www.chessprogramming.org/Principal_Variation_Search
     pub fn search_node(
         &mut self,
         node: Node,
@@ -105,7 +107,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let in_check = !board.checkers().is_empty();
 
             if in_check {
-                //Don't enter quiescence while in check
+                // CITE: Check extensions.
+                // https://www.chessprogramming.org/Check_Extensions
                 depth += 1;
             }
 
@@ -113,7 +116,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 if node != Node::Root && self.repetitions(&board) > 1 {
                     return Ok(Eval::DRAW);
                 }
-                //We are allowed to search in this node as qsearch doesn't track history
+                // We are allowed to search in this node as qsearch doesn't track history
                 return Ok(self.quiescence(board, ply_index, window));
             }
 
@@ -168,6 +171,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 .unwrap_or_else(|| EVALUATOR.evaluate(board));
 
             if !matches!(node, Node::Root | Node::Pv) {
+                // CITE: Reverse futility pruning.
+                // https://www.chessprogramming.org/Reverse_Futility_Pruning
                 if let Some(margin) = reverse_futility_margin(depth) {
                     let eval_estimate = static_eval.saturating_sub(margin);
                     if eval_estimate >= window.beta {
@@ -184,6 +189,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
+            // CITE: Null move pruning.
+            // The idea for doing it only when static_eval >= beta was
+            // first suggested to me by the Black Marlin author.
+            // https://www.chessprogramming.org/Null_Move_Pruning
             let do_nmp = static_eval >= window.beta
                 && !(our_pieces & sliding_pieces).is_empty();
             if node != Node::Root && do_nmp {
@@ -209,6 +218,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 self.data.killers[ply_index as usize].clone()
             );
 
+            // CITE: Futility pruning.
+            // This implementation is also based on extended futility pruning.
+            // https://www.chessprogramming.org/Futility_Pruning
             let futile = if let Some(margin) = futility_margin(depth) {
                 let max_eval = static_eval.saturating_add(margin);
                 max_eval <= window.alpha
@@ -236,6 +248,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     window.null_window_alpha()
                 };
                 let mut reduction = 0;
+                // CITE: Late move reductions.
+                // https://www.chessprogramming.org/Late_Move_Reductions
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
                     reduction += lmr_calculate_reduction(i, depth);
                 }
@@ -266,11 +280,15 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 window.narrow_alpha(eval);
                 if window.empty() {
                     if move_is_quiet(mv, &board) {
+                        // CITE: Killer moves.
+                        // https://www.chessprogramming.org/Killer_Heuristic
                         let killers = &mut self.data.killers[ply_index as usize];
                         if killers.is_full() {
                             killers.remove(0);
                         }
                         killers.push(mv);
+                        // CITE: History heuristic.
+                        // https://www.chessprogramming.org/History_Heuristic
                         let history = self.data.history_table.get_mut(board, mv);
                         *history += depth as u32 * depth as u32;
                     }
@@ -305,6 +323,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
         result
     }
 
+    // CITE: Quiescence search.
+    // https://www.chessprogramming.org/Quiescence_Search
     fn quiescence(
         &mut self,
         board: &Board,

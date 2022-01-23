@@ -2,6 +2,9 @@ use cozy_chess::*;
 
 use crate::eval::*;
 
+// CITE: Oracle. This is more specifically an interior node recognizer.
+// https://www.chessprogramming.org/Oracle
+// https://www.chessprogramming.org/Interior_Node_Recognizer
 pub fn oracle(board: &Board) -> Option<Eval> {
     let all_pieces = board.occupied();
     let white_pieces = board.colors(Color::White);

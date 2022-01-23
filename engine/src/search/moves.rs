@@ -6,6 +6,8 @@ use crate::eval::*;
 use super::SearchHandler;
 use super::search::{KillerEntry, Searcher};
 
+// CITE: Static exchange evaluation.
+// https://www.chessprogramming.org/Static_Exchange_Evaluation
 fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     fn get_both_pawn_attacks(sq: Square) -> BitBoard {
         get_pawn_attacks(sq, Color::White) | get_pawn_attacks(sq, Color::Black)
@@ -88,6 +90,9 @@ fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     }
 }
 
+// CITE: Move ordering.
+// This move ordering was originally derived from this page:
+// https://www.chessprogramming.org/Move_Ordering
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
     LosingCapture(Eval),
@@ -152,6 +157,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let mut capture_moves = moves;
             capture_moves.to &= their_pieces;
             for mv in capture_moves {
+                // CITE: This use of SEE in quiescence and pruning moves with
+                // negative SEE was implemented based on a chesspgoramming.org page.
+                // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
                 let eval = static_exchange_evaluation(board, mv);
                 if eval < Eval::ZERO {
                     continue;

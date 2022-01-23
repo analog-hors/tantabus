@@ -1,6 +1,8 @@
 use cozy_chess::*;
 use serde::{Serialize, Deserialize};
 
+// CITE: Mobility evaluation.
+// https://www.chessprogramming.org/Mobility
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Mobility {
     pub pawn: [i16; 5],

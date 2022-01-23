@@ -20,6 +20,8 @@ pub struct TableEntry {
 
 pub type TableKeyValueEntry = Option<(u64, TableEntry)>;
 
+// CITE: Transposition table.
+// https://www.chessprogramming.org/Transposition_Table
 #[derive(Debug)]
 pub struct CacheTable {
     table: Box<[TableKeyValueEntry]>,
@@ -57,6 +59,10 @@ impl CacheTable {
     }
 
     fn hash_to_index(&self, hash: u64) -> usize {
+        // CITE: This reduction scheme was first observed in Stockfish,
+        // who implemented it after a blog post by Daniel Lemire.
+        // https://github.com/official-stockfish/Stockfish/commit/2198cd0524574f0d9df8c0ec9aaf14ad8c94402b
+        // https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
         ((hash as u32 as u64 * self.capacity() as u64) >> u32::BITS) as usize
     }
 

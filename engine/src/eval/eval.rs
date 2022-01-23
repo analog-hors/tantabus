@@ -49,6 +49,8 @@ impl Evaluator {
 
     pub const MAX_PHASE: u32 = 256;
 
+    // CITE: This way of calculating the game phase was apparently done in Fruit.
+    // https://www.chessprogramming.org/Tapered_Eval#Implementation_example
     fn game_phase(board: &Board) -> u32 {
         macro_rules! game_phase_fn {
             ($($piece:ident=$weight:expr,$count:expr;)*) => {
