@@ -24,7 +24,7 @@ pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
     } else {
         2
     };
-    reduction -= (history / 200) as i8;
+    reduction -= (history / 150) as i8;
     reduction.max(0) as u8
 }
 
