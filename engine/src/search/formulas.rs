@@ -25,7 +25,7 @@ pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
         2
     };
     reduction -= (history / 200) as i8;
-    reduction.abs() as u8
+    reduction.max(0) as u8
 }
 
 pub fn futility_margin(depth: u8) -> Option<Eval> {
