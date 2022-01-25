@@ -17,15 +17,15 @@ pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
 }
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
-    let mut reduction: u8 = if i < 3 {
+    let mut reduction: i8 = if i < 3 {
         0
     } else if depth < 7 {
         1
     } else {
         2
     };
-    reduction = reduction.saturating_sub((history / 300) as u8);
-    reduction
+    reduction -= (history / 200) as i8;
+    reduction.abs() as u8
 }
 
 pub fn futility_margin(depth: u8) -> Option<Eval> {
