@@ -5,6 +5,7 @@ use crate::eval::*;
 use super::SearchHandler;
 use super::cache::*;
 use super::helpers::move_is_quiet;
+use super::moves::MoveScore;
 use super::window::Window;
 use super::oracle;
 use super::history::HistoryTable;
@@ -225,7 +226,15 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            for (i, (mv, _)) in (&mut moves).enumerate() {
+            let mut quiets_to_check = lmp_quiets_to_check(depth);
+            for (i, (mv, move_score)) in (&mut moves).enumerate() {
+                if let MoveScore::Quiet(_) = move_score {
+                    if quiets_to_check > 0 {
+                        quiets_to_check -= 1;
+                    } else {
+                        continue;
+                    }
+                }
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let gives_check = !child.checkers().is_empty();

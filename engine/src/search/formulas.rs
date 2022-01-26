@@ -28,6 +28,16 @@ pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
     reduction.max(0) as u8
 }
 
+pub fn lmp_quiets_to_check(depth: u8) -> usize {
+    match depth {
+        0 => 10,
+        1 => 20,
+        2 => 30,
+        3 => 40,
+        _ => usize::MAX
+    }
+}
+
 pub fn futility_margin(depth: u8) -> Option<Eval> {
     Some(Eval::cp(match depth {
         1 => 300,
