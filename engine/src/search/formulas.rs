@@ -33,6 +33,8 @@ pub fn lmp_quiets_to_check(depth: u8) -> usize {
         1 => 10,
         2 => 15,
         3 => 20,
+        4 => 25,
+        5 => 30,
         _ => usize::MAX
     }
 }
