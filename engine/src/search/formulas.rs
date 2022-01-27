@@ -17,13 +17,13 @@ pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
 }
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
-    let mut reduction: i8 = if i < 3 {
-        0
-    } else if depth < 7 {
-        1
-    } else {
-        2
-    };
+    if i < 3 {
+        return 0;
+    }
+    let mut reduction: i8 = 1;
+    if depth >= 7 {
+        reduction += 1;
+    }
     reduction -= (history / 200) as i8;
     reduction.max(0) as u8
 }
