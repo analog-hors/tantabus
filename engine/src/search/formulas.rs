@@ -30,9 +30,9 @@ pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
 
 pub fn lmp_quiets_to_check(depth: u8) -> usize {
     match depth {
-        1 => 10,
-        2 => 15,
-        3 => 20,
+        1 => 5,
+        2 => 10,
+        3 => 15,
         _ => usize::MAX
     }
 }
