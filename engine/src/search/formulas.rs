@@ -21,7 +21,7 @@ pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
         return 0;
     }
     let mut reduction: i8 = 1;
-    if i >= 25 {
+    if i >= 20 {
         reduction += 1;
     }
     if depth >= 7 {
