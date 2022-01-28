@@ -10,6 +10,7 @@ use super::trace::*;
 pub struct EvalTerms {
     pub piece_tables: PstEvalSet,
     pub mobility: Mobility,
+    pub virtual_queen_mobility: [i16; 28],
     pub passed_pawns: KingRelativePst,
     pub bishop_pair: i16,
     pub rook_on_open_file: i16,
@@ -81,6 +82,7 @@ impl Evaluator {
         };
         self.add_psqt_terms(&mut ctx);
         self.add_mobility_terms(&mut ctx);
+        self.add_virtual_queen_mobility(&mut ctx);
         self.add_passed_pawn_terms(&mut ctx);
         self.add_rook_on_open_file_terms(&mut ctx);
         self.add_bishop_pair_terms(&mut ctx);
@@ -140,6 +142,22 @@ impl Evaluator {
                 *ctx.eg += endgame_mobility[mobility];
             }
         }
+    }
+
+    fn add_virtual_queen_mobility<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
+        let occupied = ctx.board.occupied();
+        let our_pieces = ctx.board.colors(ctx.color);
+        let our_king = ctx.board.king(ctx.color);
+        let approx_queen_moves = (
+            get_bishop_moves(our_king, occupied) |
+            get_rook_moves(our_king, occupied)
+        ) & !our_pieces;
+        let mobility = approx_queen_moves.popcnt() as usize;
+        ctx.trace.trace(|terms| {
+            terms.virtual_queen_mobility[mobility] += 1;
+        });
+        *ctx.mg += self.midgame.virtual_queen_mobility[mobility];
+        *ctx.eg += self.endgame.virtual_queen_mobility[mobility];
     }
 
     fn add_passed_pawn_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
