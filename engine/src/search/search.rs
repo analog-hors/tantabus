@@ -361,18 +361,18 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return eval;
             }
 
-            if let Some(entry) = self.shared.cache_table.get(board, ply_index) {
-                match entry.kind {
-                    TableEntryKind::Exact => return entry.eval,
-                    TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
-                    TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
-                }
-                if window.empty() {
-                    return entry.eval;
-                }
-            }
+            let cache_entry = self.shared.cache_table.get(&board, ply_index);
+            let static_eval = cache_entry
+                .and_then(|e| {
+                    if e.eval.as_cp().is_some() {
+                        Some(e.eval)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| EVALUATOR.evaluate(board));
 
-            let mut best_eval = EVALUATOR.evaluate(board);
+            let mut best_eval = static_eval;
             window.narrow_alpha(best_eval);
             if window.empty() {
                 return best_eval;
