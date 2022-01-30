@@ -6,6 +6,7 @@ mod eval_set;
 mod mob;
 mod trace;
 mod eval_consts;
+pub mod phased_eval;
 
 pub use eval::*;
 pub use eval_consts::*;

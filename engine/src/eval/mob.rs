@@ -4,17 +4,17 @@ use serde::{Serialize, Deserialize};
 // CITE: Mobility evaluation.
 // https://www.chessprogramming.org/Mobility
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Mobility {
-    pub pawn: [i16; 5],
-    pub knight: [i16; 9],
-    pub bishop: [i16; 14],
-    pub rook: [i16; 15],
-    pub queen: [i16; 28],
-    pub king: [i16; 9]
+pub struct Mobility<E> {
+    pub pawn: [E; 5],
+    pub knight: [E; 9],
+    pub bishop: [E; 14],
+    pub rook: [E; 15],
+    pub queen: [E; 28],
+    pub king: [E; 9]
 }
 
-impl Mobility {
-    pub fn get(&self, piece: Piece) -> &[i16] {
+impl<E> Mobility<E> {
+    pub fn get(&self, piece: Piece) -> &[E] {
         match piece {
             Piece::Pawn => &self.pawn,
             Piece::Knight => &self.knight,
@@ -25,7 +25,7 @@ impl Mobility {
         }
     }
 
-    pub fn get_mut(&mut self, piece: Piece) -> &mut [i16] {
+    pub fn get_mut(&mut self, piece: Piece) -> &mut [E] {
         match piece {
             Piece::Pawn => &mut self.pawn,
             Piece::Knight => &mut self.knight,

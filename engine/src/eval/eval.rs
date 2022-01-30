@@ -5,125 +5,119 @@ use super::Eval;
 use super::pst::*;
 use super::mob::*;
 use super::trace::*;
+use super::phased_eval::*;
+use super::eval_consts::EVAL_WEIGHTS;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct EvalTerms {
-    pub piece_tables: PstEvalSet,
-    pub mobility: Mobility,
-    pub virtual_queen_mobility: [i16; 28],
-    pub passed_pawns: KingRelativePst,
-    pub bishop_pair: i16,
-    pub rook_on_open_file: i16,
-    pub rook_on_semiopen_file: i16
+pub struct EvalTerms<E> {
+    pub piece_tables: PstEvalSet<E>,
+    pub mobility: Mobility<E>,
+    pub virtual_queen_mobility: [E; 28],
+    pub passed_pawns: KingRelativePst<E>,
+    pub bishop_pair: E,
+    pub rook_on_open_file: E,
+    pub rook_on_semiopen_file: E
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Evaluator {
-    pub midgame: EvalTerms,
-    pub endgame: EvalTerms
+pub type EvalTrace = EvalTerms<i16>;
+pub type EvalWeights = EvalTerms<PhasedEval>;
+
+pub const MAX_PHASE: u32 = 256;
+
+// CITE: This way of calculating the game phase was apparently done in Fruit.
+// https://www.chessprogramming.org/Tapered_Eval#Implementation_example
+pub fn game_phase(board: &Board) -> u32 {
+    macro_rules! game_phase_fn {
+        ($($piece:ident=$weight:expr,$count:expr;)*) => {
+            const INIT_PHASE: u32 = (0 $( + $count * $weight)*) * 2;
+            let inv_phase = 0 $( + board.pieces(Piece::$piece).popcnt() * $weight)*;
+            let phase = INIT_PHASE.saturating_sub(inv_phase); //Early promotions
+            (phase * MAX_PHASE + (INIT_PHASE / 2)) / INIT_PHASE
+        }
+    }
+    game_phase_fn! {
+        Pawn   = 0, 8;
+        Knight = 1, 2;
+        Bishop = 1, 2;
+        Rook   = 2, 2;
+        Queen  = 4, 1;
+    }
 }
 
+fn sign(color: Color) -> i16 {
+    if color == Color::White { 1 } else { -1 }
+}
+
+pub fn evaluate(board: &Board) -> Eval {
+    EvalContext {
+        board,
+        trace: &mut (),
+        weights: &EVAL_WEIGHTS
+    }.eval()
+}
+
+pub fn evaluate_with_weights_and_trace(board: &Board, weights: &EvalWeights) -> (Eval, EvalTrace) {
+    let mut trace = EvalTrace::default();
+    let eval = EvalContext {
+        board,
+        trace: &mut trace,
+        weights
+    }.eval();
+    (eval, trace)
+}
 struct EvalContext<'c, T> {
     board: &'c Board,
-    color: Color,
-    mg: &'c mut i16,
-    eg: &'c mut i16,
-    trace: &'c mut T
+    trace: &'c mut T,
+    weights: &'c EvalTerms<PhasedEval>
 }
 
-impl Evaluator {
-    pub fn evaluate(&self, board: &Board) -> Eval {
-        let phase = Self::game_phase(board);
-        let us = self.evaluate_for_side(board, board.side_to_move(), phase, &mut ());
-        let them = self.evaluate_for_side(board, !board.side_to_move(), phase, &mut ());
-        Eval::cp(us - them)
-    }
+impl<'c, T: TraceTarget> EvalContext<'c, T> {
+    fn eval(&mut self) -> Eval {
+        use Color::*;
+        let eval =
+            (self.psqt_terms(White) - self.psqt_terms(Black)) +
+            (self.mobility_terms(White) - self.mobility_terms(Black)) +
+            (self.virtual_queen_mobility(White) - self.virtual_queen_mobility(Black)) +
+            (self.passed_pawn_terms(White) - self.passed_pawn_terms(Black)) +
+            (self.rook_on_open_file_terms(White) - self.rook_on_open_file_terms(Black)) +
+            (self.bishop_pair_terms(White) - self.bishop_pair_terms(Black));
 
-    pub fn eval_trace(&self, board: &Board) -> (EvalTerms, EvalTerms, u32) {
-        let mut our_features = EvalTerms::default();
-        let mut their_features = EvalTerms::default();
-        let phase = Self::game_phase(board);
-        self.evaluate_for_side(board, board.side_to_move(), phase, &mut our_features);
-        self.evaluate_for_side(board, !board.side_to_move(), phase, &mut their_features);
-        (our_features, their_features, phase)
-    }
-
-    pub const MAX_PHASE: u32 = 256;
-
-    // CITE: This way of calculating the game phase was apparently done in Fruit.
-    // https://www.chessprogramming.org/Tapered_Eval#Implementation_example
-    fn game_phase(board: &Board) -> u32 {
-        macro_rules! game_phase_fn {
-            ($($piece:ident=$weight:expr,$count:expr;)*) => {
-                const INIT_PHASE: u32 = (0 $( + $count * $weight)*) * 2;
-                let inv_phase = 0 $( + board.pieces(Piece::$piece).popcnt() * $weight)*;
-                let phase = INIT_PHASE.saturating_sub(inv_phase); //Early promotions
-                (phase * Self::MAX_PHASE + (INIT_PHASE / 2)) / INIT_PHASE
-            }
-        }
-        game_phase_fn! {
-            Pawn   = 0, 8;
-            Knight = 1, 2;
-            Bishop = 1, 2;
-            Rook   = 2, 2;
-            Queen  = 4, 1;
-        }
-    }
-
-    fn evaluate_for_side(&self, board: &Board, color: Color, phase: u32, trace: &mut impl TraceTarget) -> i16 {
-        let mut midgame_value = 0;
-        let mut endgame_value = 0;
-        let mut ctx = EvalContext {
-            board,
-            color,
-            mg: &mut midgame_value,
-            eg: &mut endgame_value,
-            trace,
-        };
-        self.add_psqt_terms(&mut ctx);
-        self.add_mobility_terms(&mut ctx);
-        self.add_virtual_queen_mobility_term(&mut ctx);
-        self.add_passed_pawn_terms(&mut ctx);
-        self.add_rook_on_open_file_terms(&mut ctx);
-        self.add_bishop_pair_terms(&mut ctx);
-
-        let phase = phase as i32;
-        const MAX_PHASE: i32 = Evaluator::MAX_PHASE as i32;
+        let phase = game_phase(self.board) as i32;
         let interpolated = (
-            (midgame_value as i32 * (MAX_PHASE - phase)) +
-            (endgame_value as i32 * phase)
-        ) / MAX_PHASE;
-        interpolated as i16
+            (eval.0 as i32 * (MAX_PHASE as i32 - phase)) +
+            (eval.1 as i32 * phase)
+        ) / MAX_PHASE as i32;
+        Eval::cp(interpolated as i16 * sign(self.board.side_to_move()))
     }
 
-    fn add_psqt_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let our_pieces = ctx.board.colors(ctx.color);
-        let our_king = ctx.board.king(ctx.color);
+    fn psqt_terms(&mut self, color: Color) -> PhasedEval {
+        let mut eval = PhasedEval::ZERO;
+        let our_pieces = self.board.colors(color);
+        let our_king = self.board.king(color);
         for &piece in &Piece::ALL {
-            let pieces = our_pieces & ctx.board.pieces(piece);
+            let pieces = our_pieces & self.board.pieces(piece);
             for square in pieces {
-                ctx.trace.trace(|terms| {
-                    *terms.piece_tables.get_mut(piece, ctx.color, our_king, square) += 1;
+                self.trace.trace(|terms| {
+                    *terms.piece_tables.get_mut(piece, color, our_king, square) += sign(color);
                 });
-                *ctx.mg += self.midgame.piece_tables.get(piece, ctx.color, our_king, square);
-                *ctx.eg += self.endgame.piece_tables.get(piece, ctx.color, our_king, square);
+                eval += *self.weights.piece_tables.get(piece, color, our_king, square);
             }
         }
+        eval
     }
 
-    fn add_mobility_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let our_pieces = ctx.board.colors(ctx.color);
-        let occupied = ctx.board.occupied();
+    fn mobility_terms(&mut self, color: Color) -> PhasedEval {
+        let mut eval = PhasedEval::ZERO;
+        let our_pieces = self.board.colors(color);
+        let occupied = self.board.occupied();
         for &piece in &Piece::ALL {
-            let pieces = our_pieces & ctx.board.pieces(piece);
-            let midgame_mobility = self.midgame.mobility.get(piece);
-            let endgame_mobility = self.endgame.mobility.get(piece);
-
+            let pieces = our_pieces & self.board.pieces(piece);
+            let mobility_table = self.weights.mobility.get(piece);
             for square in pieces {
                 let approx_moves = match piece {
                     Piece::Pawn => (
-                        get_pawn_quiets(square, ctx.color, occupied) |
-                        (get_pawn_attacks(square, ctx.color) & ctx.board.colors(!ctx.color))
+                        get_pawn_quiets(square, color, occupied) |
+                        (get_pawn_attacks(square, color) & self.board.colors(!color))
                     ),
                     Piece::Knight => get_knight_moves(square) & !our_pieces,
                     Piece::Bishop => get_bishop_moves(square, occupied) & !our_pieces,
@@ -135,44 +129,44 @@ impl Evaluator {
                     Piece::King => get_king_moves(square) & !our_pieces
                 };
                 let mobility = approx_moves.popcnt() as usize;
-                ctx.trace.trace(|terms| {
-                    terms.mobility.get_mut(piece)[mobility] += 1;
+                self.trace.trace(|terms| {
+                    terms.mobility.get_mut(piece)[mobility] += sign(color);
                 });
-                *ctx.mg += midgame_mobility[mobility];
-                *ctx.eg += endgame_mobility[mobility];
+                eval += mobility_table[mobility];
             }
         }
+        eval
     }
 
-    fn add_virtual_queen_mobility_term<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let occupied = ctx.board.occupied();
-        let our_pieces = ctx.board.colors(ctx.color);
-        let our_king = ctx.board.king(ctx.color);
+    fn virtual_queen_mobility(&mut self, color: Color) -> PhasedEval {
+        let occupied = self.board.occupied();
+        let our_pieces = self.board.colors(color);
+        let our_king = self.board.king(color);
         let approx_queen_moves = (
             get_bishop_moves(our_king, occupied) |
             get_rook_moves(our_king, occupied)
         ) & !our_pieces;
         let mobility = approx_queen_moves.popcnt() as usize;
-        ctx.trace.trace(|terms| {
-            terms.virtual_queen_mobility[mobility] += 1;
+        self.trace.trace(|terms| {
+            terms.virtual_queen_mobility[mobility] += sign(color);
         });
-        *ctx.mg += self.midgame.virtual_queen_mobility[mobility];
-        *ctx.eg += self.endgame.virtual_queen_mobility[mobility];
+        self.weights.virtual_queen_mobility[mobility]
     }
 
-    fn add_passed_pawn_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let our_pieces = ctx.board.colors(ctx.color);
-        let pawns = ctx.board.pieces(Piece::Pawn);
+    fn passed_pawn_terms(&mut self, color: Color) -> PhasedEval {
+        let our_pieces = self.board.colors(color);
+        let pawns = self.board.pieces(Piece::Pawn);
         let our_pawns = our_pieces & pawns;
         let their_pawns = pawns ^ our_pawns;
-        let our_king = ctx.board.king(ctx.color);
-        let promotion_rank = Rank::Eighth.relative_to(ctx.color);
+        let our_king = self.board.king(color);
+        let promotion_rank = Rank::Eighth.relative_to(color);
 
+        let mut eval = PhasedEval::ZERO;
         for pawn in our_pawns {
-            let telestop = Square::new(pawn.file(), promotion_rank);
-            let front_span = get_between_rays(pawn, telestop);
+            let promo_square = Square::new(pawn.file(), promotion_rank);
+            let front_span = get_between_rays(pawn, promo_square);
             let mut blocker_mask = front_span;
-            for attack in get_pawn_attacks(pawn, ctx.color) {
+            for attack in get_pawn_attacks(pawn, color) {
                 let telestop = Square::new(attack.file(), promotion_rank);
                 let front_span = get_between_rays(attack, telestop);
                 blocker_mask |= front_span | attack.bitboard();
@@ -181,48 +175,49 @@ impl Evaluator {
             let passed = (their_pawns & blocker_mask).is_empty()
                 && (our_pawns & front_span).is_empty();
             if passed {
-                ctx.trace.trace(|terms| {
-                    *terms.passed_pawns.get_mut(ctx.color, our_king, pawn) += 1;
+                self.trace.trace(|terms| {
+                    *terms.passed_pawns.get_mut(color, our_king, pawn) += sign(color);
                 });
-                *ctx.mg += self.midgame.passed_pawns.get(ctx.color, our_king, pawn);
-                *ctx.eg += self.endgame.passed_pawns.get(ctx.color, our_king, pawn);
+                eval += *self.weights.passed_pawns.get(color, our_king, pawn);
             }
         }
+        eval
     }
 
-    fn add_rook_on_open_file_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let our_pieces = ctx.board.colors(ctx.color);
-        let pawns = ctx.board.pieces(Piece::Pawn);
+    fn rook_on_open_file_terms(&mut self, color: Color) -> PhasedEval {
+        let our_pieces = self.board.colors(color);
+        let pawns = self.board.pieces(Piece::Pawn);
         let our_pawns = our_pieces & pawns;
-        let our_rooks = our_pieces & ctx.board.pieces(Piece::Rook);
+        let our_rooks = our_pieces & self.board.pieces(Piece::Rook);
         
+        let mut eval = PhasedEval::ZERO;
         for rook in our_rooks {
             let file = rook.file();
             let file_bb = file.bitboard();
             if (file_bb & pawns).is_empty() {
-                ctx.trace.trace(|terms| {
-                    terms.rook_on_open_file += 1;
+                self.trace.trace(|terms| {
+                    terms.rook_on_open_file += sign(color);
                 });
-                *ctx.mg += self.midgame.rook_on_open_file;
-                *ctx.eg += self.endgame.rook_on_open_file;
+                eval += self.weights.rook_on_open_file;
             } else if (file_bb & our_pawns).is_empty() {
-                ctx.trace.trace(|terms| {
-                    terms.rook_on_semiopen_file += 1;
+                self.trace.trace(|terms| {
+                    terms.rook_on_semiopen_file += sign(color);
                 });
-                *ctx.mg += self.midgame.rook_on_semiopen_file;
-                *ctx.eg += self.endgame.rook_on_semiopen_file;
+                eval += self.weights.rook_on_semiopen_file;
             }
         }
+        eval
     }
 
-    fn add_bishop_pair_terms<T: TraceTarget>(&self, ctx: &mut EvalContext<T>) {
-        let our_pieces = ctx.board.colors(ctx.color);
-        if (our_pieces & ctx.board.pieces(Piece::Bishop)).popcnt() >= 2 {
-            ctx.trace.trace(|terms| {
-                terms.bishop_pair += 1;
+    fn bishop_pair_terms(&mut self, color: Color) -> PhasedEval {
+        let mut eval = PhasedEval::ZERO;
+        let our_pieces = self.board.colors(color);
+        if (our_pieces & self.board.pieces(Piece::Bishop)).popcnt() >= 2 {
+            self.trace.trace(|terms| {
+                terms.bishop_pair += sign(color);
             });
-            *ctx.mg += self.midgame.bishop_pair;
-            *ctx.eg += self.endgame.bishop_pair;
+            eval += self.weights.bishop_pair;
         }
+        eval
     }
 }

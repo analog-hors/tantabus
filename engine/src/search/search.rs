@@ -167,7 +167,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         None
                     }
                 })
-                .unwrap_or_else(|| EVALUATOR.evaluate(board));
+                .unwrap_or_else(|| evaluate(board));
 
             if !matches!(node, Node::Root | Node::Pv) {
                 // CITE: Reverse futility pruning.
@@ -372,7 +372,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let mut best_eval = EVALUATOR.evaluate(board);
+            let mut best_eval = evaluate(board);
             window.narrow_alpha(best_eval);
             if window.empty() {
                 return best_eval;
