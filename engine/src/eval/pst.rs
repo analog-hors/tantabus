@@ -4,9 +4,9 @@ use serde::{Serialize, Deserialize};
 // CITE: This style of "king relative" PST was suggested to me by the Berserk author.
 // https://github.com/jhonnold/berserk/blob/53254ac839f430ba98749f4520ff03bf5d86b208/src/eval.c#L160-L190
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct KingRelativePst(pub [[[i16; 4]; 8]; 2]);
+pub struct KingRelativePst<E>(pub [[[E; 4]; 8]; 2]);
 
-impl KingRelativePst {
+impl<E> KingRelativePst<E> {
     fn key(side: Color, king: Square, square: Square) -> (usize, usize, usize) {
         let on_king_half = (king.file() > File::D) == (square.file() > File::D);
         let rank = square.rank().relative_to(!side);
@@ -18,49 +18,49 @@ impl KingRelativePst {
         (on_king_half as usize, rank as usize, file as usize)
     }
 
-    pub fn get(&self, side: Color, king: Square, square: Square) -> i16 {
+    pub fn get(&self, side: Color, king: Square, square: Square) -> &E {
         let (on_king_half, rank, file) = Self::key(side, king, square);
-        self.0[on_king_half][rank][file]
+        &self.0[on_king_half][rank][file]
     }
 
-    pub fn get_mut(&mut self, side: Color, king: Square, square: Square) -> &mut i16 {
+    pub fn get_mut(&mut self, side: Color, king: Square, square: Square) -> &mut E {
         let (on_king_half, rank, file) = Self::key(side, king, square);
         &mut self.0[on_king_half][rank][file]
     }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Pst(pub [[i16; 8]; 8]);
+pub struct Pst<E>(pub [[E; 8]; 8]);
 
-impl Pst {
+impl<E> Pst<E> {
     fn key(side: Color, square: Square) -> (usize, usize) {
         let rank = square.rank().relative_to(!side);
         (rank as usize, square.file() as usize)
     }
     
-    pub fn get(&self, side: Color, square: Square) -> i16 {
+    pub fn get(&self, side: Color, square: Square) -> &E {
         let (rank, file) = Self::key(side, square);
-        self.0[rank][file]
+        &self.0[rank][file]
     }
 
-    pub fn get_mut(&mut self, side: Color, square: Square) -> &mut i16 {
+    pub fn get_mut(&mut self, side: Color, square: Square) -> &mut E {
         let (rank, file) = Self::key(side, square);
         &mut self.0[rank][file]
     }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct PstEvalSet {
-    pub pawn: KingRelativePst,
-    pub knight: KingRelativePst,
-    pub bishop: KingRelativePst,
-    pub rook: KingRelativePst,
-    pub queen: KingRelativePst,
-    pub king: Pst
+pub struct PstEvalSet<E> {
+    pub pawn: KingRelativePst<E>,
+    pub knight: KingRelativePst<E>,
+    pub bishop: KingRelativePst<E>,
+    pub rook: KingRelativePst<E>,
+    pub queen: KingRelativePst<E>,
+    pub king: Pst<E>
 }
 
-impl PstEvalSet {
-    pub fn get(&self, piece: Piece, color: Color, king: Square, square: Square) -> i16 {
+impl<E> PstEvalSet<E> {
+    pub fn get(&self, piece: Piece, color: Color, king: Square, square: Square) -> &E {
         if piece == Piece::King {
             self.king.get(color, square)
         } else {
@@ -76,7 +76,7 @@ impl PstEvalSet {
         }
     }
 
-    pub fn get_mut(&mut self, piece: Piece, color: Color, king: Square, square: Square) -> &mut i16 {
+    pub fn get_mut(&mut self, piece: Piece, color: Color, king: Square, square: Square) -> &mut E {
         if piece == Piece::King {
             self.king.get_mut(color, square)
         } else {
