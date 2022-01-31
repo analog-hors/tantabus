@@ -16,7 +16,8 @@ pub struct EvalTerms<E> {
     pub passed_pawns: KingRelativePst<E>,
     pub bishop_pair: E,
     pub rook_on_open_file: E,
-    pub rook_on_semiopen_file: E
+    pub rook_on_semiopen_file: E,
+    pub king_ring_attacks: [E; 9]
 }
 
 pub type EvalTrace = EvalTerms<i16>;
@@ -74,13 +75,26 @@ struct EvalContext<'c, T> {
 impl<'c, T: TraceTarget> EvalContext<'c, T> {
     fn eval(&mut self) -> Eval {
         use Color::*;
-        let eval =
-            (self.psqt_terms(White) - self.psqt_terms(Black)) +
-            (self.mobility_terms(White) - self.mobility_terms(Black)) +
-            (self.virtual_queen_mobility(White) - self.virtual_queen_mobility(Black)) +
-            (self.passed_pawn_terms(White) - self.passed_pawn_terms(Black)) +
-            (self.rook_on_open_file_terms(White) - self.rook_on_open_file_terms(Black)) +
-            (self.bishop_pair_terms(White) - self.bishop_pair_terms(Black));
+
+        let mut eval = PhasedEval::ZERO;
+        macro_rules! add_simple_terms {
+            ($($term:ident),*) => {
+                $(eval += self.$term(White) - self.$term(Black);)*
+            }
+        }
+        add_simple_terms! {
+            psqt_terms,
+            virtual_queen_mobility_terms,
+            passed_pawn_terms,
+            rook_on_open_file_terms,
+            bishop_pair_terms
+        }
+        let (white_mobility, white_attacks) = self.mobility_terms(White);
+        let (black_mobility, black_attacks) = self.mobility_terms(Black);
+        eval += white_mobility - black_mobility;
+        eval += self.king_ring_attacks_terms(White, black_attacks)
+              - self.king_ring_attacks_terms(Black, white_attacks);
+
 
         let phase = game_phase(self.board) as i32;
         let interpolated = (
@@ -106,39 +120,62 @@ impl<'c, T: TraceTarget> EvalContext<'c, T> {
         eval
     }
 
-    fn mobility_terms(&mut self, color: Color) -> PhasedEval {
+    fn mobility_terms(&mut self, color: Color) -> (PhasedEval, BitBoard) {
         let mut eval = PhasedEval::ZERO;
+        let mut attacks = BitBoard::EMPTY;
         let our_pieces = self.board.colors(color);
         let occupied = self.board.occupied();
         for &piece in &Piece::ALL {
             let pieces = our_pieces & self.board.pieces(piece);
             let mobility_table = self.weights.mobility.get(piece);
             for square in pieces {
-                let approx_moves = match piece {
-                    Piece::Pawn => (
-                        get_pawn_quiets(square, color, occupied) |
-                        (get_pawn_attacks(square, color) & self.board.colors(!color))
-                    ),
-                    Piece::Knight => get_knight_moves(square) & !our_pieces,
-                    Piece::Bishop => get_bishop_moves(square, occupied) & !our_pieces,
-                    Piece::Rook => get_rook_moves(square, occupied) & !our_pieces,
-                    Piece::Queen => (
-                        get_bishop_moves(square, occupied) |
-                        get_rook_moves(square, occupied)
-                    ) & !our_pieces,
-                    Piece::King => get_king_moves(square) & !our_pieces
-                };
-                let mobility = approx_moves.popcnt() as usize;
+                let mut piece_moves = BitBoard::EMPTY;
+                match piece {
+                    Piece::Pawn => {
+                        piece_moves |= get_pawn_quiets(square, color, occupied);
+                        let piece_attacks = get_pawn_attacks(square, color);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & self.board.colors(!color);
+                    }
+                    Piece::Knight => {
+                        let piece_attacks = get_knight_moves(square);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & !our_pieces;
+                    }
+                    Piece::Bishop => {
+                        let piece_attacks = get_bishop_moves(square, occupied);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & !our_pieces;
+                    }
+                    Piece::Rook => {
+                        let piece_attacks = get_rook_moves(square, occupied);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & !our_pieces;
+                    }
+                    Piece::Queen => {
+                        let piece_attacks =
+                            get_rook_moves(square, occupied) |
+                            get_bishop_moves(square, occupied);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & !our_pieces;
+                    }
+                    Piece::King => {
+                        let piece_attacks = get_king_moves(square);
+                        attacks |= piece_attacks;
+                        piece_moves |= piece_attacks & !our_pieces;
+                    }
+                }
+                let mobility = piece_moves.popcnt() as usize;
                 self.trace.trace(|terms| {
                     terms.mobility.get_mut(piece)[mobility] += sign(color);
                 });
                 eval += mobility_table[mobility];
             }
         }
-        eval
+        (eval, attacks)
     }
 
-    fn virtual_queen_mobility(&mut self, color: Color) -> PhasedEval {
+    fn virtual_queen_mobility_terms(&mut self, color: Color) -> PhasedEval {
         let occupied = self.board.occupied();
         let our_pieces = self.board.colors(color);
         let our_king = self.board.king(color);
@@ -219,5 +256,14 @@ impl<'c, T: TraceTarget> EvalContext<'c, T> {
             eval += self.weights.bishop_pair;
         }
         eval
+    }
+
+    fn king_ring_attacks_terms(&mut self, color: Color, attacks: BitBoard) -> PhasedEval {
+        let our_king = self.board.king(color);
+        let attacks = (get_king_moves(our_king) & attacks).popcnt();
+        self.trace.trace(|terms| {
+            terms.king_ring_attacks[attacks as usize] += sign(color);
+        });
+        self.weights.king_ring_attacks[attacks as usize]
     }
 }
