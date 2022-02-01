@@ -221,14 +221,12 @@ fn main() {
                 UciMessage::Go { time_control, search_control } => {
                     let time_manager;
                     time_manager = match time_control {
-                        Some(UciTimeControl::MoveTime(time)) => StandardTimeManager::new(
-                            Duration::ZERO,
-                            0.0,
-                            time.to_std().unwrap()
-                        ),
+                        Some(UciTimeControl::MoveTime(time)) => StandardTimeManager::Fixed(time.to_std().unwrap()),
                         Some(UciTimeControl::TimeLeft {
                             white_time,
                             black_time,
+                            white_increment,
+                            black_increment,
                             ..
                         }) => {
                             let (initial_pos, moves) = position.as_ref().unwrap();
@@ -237,22 +235,16 @@ fn main() {
                             } else {
                                 !initial_pos.side_to_move()
                             };
-                            let time_left = match side_to_move {
-                                Color::White => white_time,
-                                Color::Black => black_time
-                            }.unwrap().to_std().unwrap();
-                            StandardTimeManager::new(
-                                time_left, 
-                                options.options.percent_time_used_per_move,
-                                options.options.minimum_time_used_per_move
-                            )
+                            let (time_left, increment) = match side_to_move {
+                                Color::White => (white_time, white_increment),
+                                Color::Black => (black_time, black_increment)
+                            };
+                            let time_left = time_left.and_then(|t| t.to_std().ok()).unwrap_or_default();
+                            let increment = increment.and_then(|t| t.to_std().ok()).unwrap_or_default();
+                            StandardTimeManager::standard(time_left, increment)
                         }
                         Some(UciTimeControl::Ponder) => todo!(),
-                        None | Some(UciTimeControl::Infinite) => StandardTimeManager::new(
-                            Duration::ZERO,
-                            0.0,
-                            Duration::MAX
-                        )
+                        None | Some(UciTimeControl::Infinite) => StandardTimeManager::Infinite
                     };
                     
                     options.options.engine_options.max_depth = 64u8.try_into().unwrap();

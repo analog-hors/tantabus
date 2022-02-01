@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::search::SearchResult;
+use crate::eval::EvalKind;
 
 pub trait TimeManager {
     ///Update the time manager's internal state with a new result.
@@ -52,16 +53,54 @@ impl TimeManager for PercentageTimeManager {
 }
 
 ///The standard time manager. Still quite naive.
-pub struct StandardTimeManager(PercentageTimeManager);
+pub enum StandardTimeManager {
+    Infinite,
+    Fixed(Duration),
+    Standard {
+        prev_eval: Option<i16>,
+        allocated: Duration,
+        elapsed: Duration,
+        max_time: Duration
+    }
+}
 
 impl StandardTimeManager {
-    pub fn new(time_left: Duration, percentage: f32, minimum_time: Duration) -> Self {
-        Self(PercentageTimeManager::new(time_left, percentage, minimum_time))
+    pub fn standard(time_left: Duration, increment: Duration) -> Self {
+        let max_time = time_left.mul_f32(0.66);
+        Self::Standard {
+            prev_eval: None,
+            allocated: (time_left + increment).mul_f32(0.03).min(max_time),
+            elapsed: Duration::ZERO,
+            max_time
+        }
     }
 }
 
 impl TimeManager for StandardTimeManager {
     fn update(&mut self, result: SearchResult, time: Duration) -> Duration {
-        self.0.update(result, time)
+        match self {
+            Self::Infinite => Duration::MAX,
+            Self::Fixed(time_left) => {
+                *time_left = time_left.saturating_sub(time);
+                *time_left
+            }
+            Self::Standard {
+                prev_eval,
+                allocated,
+                elapsed,
+                max_time
+            } => {
+                if let EvalKind::Centipawn(eval) = result.eval.kind() {
+                    if let Some(prev_eval) = prev_eval.replace(eval) {
+                        let eval_diff = (prev_eval - eval).abs();
+                        // NOTE: This doesn't ever decrease time.
+                        let multiplier = 1.025f32.powf((eval_diff as f32 / 25.0).clamp(-2.0, 2.0));
+                        *allocated = allocated.mul_f32(multiplier).min(*max_time);
+                    }
+                }
+                *elapsed += time;
+                allocated.saturating_sub(*elapsed)
+            }
+        }
     }
 }
