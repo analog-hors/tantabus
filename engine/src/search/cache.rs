@@ -73,8 +73,22 @@ impl CacheTable {
             if entry_hash == hash {
                 entry.eval = match entry.eval.kind() {
                     EvalKind::Centipawn(_) => entry.eval,
-                    EvalKind::MateIn(p) => Eval::mate_in(p + ply_index),
-                    EvalKind::MatedIn(p) => Eval::mated_in(p + ply_index),
+                    EvalKind::MateIn(p) => {
+                        let p = p as u32 + ply_index as u32;
+                        if p <= u8::MAX as u32 {
+                            Eval::mate_in(p as u8)
+                        } else {
+                            Eval::cp((20000 - p - u8::MAX as u32) as i16)
+                        }
+                    },
+                    EvalKind::MatedIn(p) => {
+                        let p = p as u32 + ply_index as u32;
+                        if p <= u8::MAX as u32 {
+                            Eval::mated_in(p as u8)
+                        } else {
+                            Eval::cp(-((20000 - p - u8::MAX as u32) as i16))
+                        }
+                    },
                 };
                 return Some(entry);
             }
@@ -91,10 +105,26 @@ impl CacheTable {
         let hash = board.hash();
         let index = self.hash_to_index(hash);
         let old = &mut self.table[index];
-        if old.is_none() {
+        if let Some((old_hash, old_entry)) = old {
+            let mut replace = true;
+            if *old_hash == hash {
+                if old_entry.depth == entry.depth {
+                    replace = match old_entry.kind {
+                        TableEntryKind::Exact => false,
+                        TableEntryKind::LowerBound => entry.eval > old_entry.eval,
+                        TableEntryKind::UpperBound => entry.eval < old_entry.eval
+                    };
+                } else {
+                    replace = entry.depth > old_entry.depth;
+                }
+            }
+            if replace {
+                *old = Some((hash, entry));
+            }
+        } else {
             self.len += 1;
+            *old = Some((hash, entry));
         }
-        *old = Some((hash, entry));
     }
 
     pub fn capacity(&self) -> u32 {

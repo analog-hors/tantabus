@@ -42,6 +42,8 @@ impl Display for EvalKind {
     }
 }
 
+
+
 impl Eval {
     pub const ZERO: Self = Self(0);
 
@@ -55,6 +57,14 @@ impl Eval {
 
     const MATE_IN_ZERO: Self = Self(i16::MAX - 100);
 
+    const MAX_MATE_IN: Self = Self::mate_in(u8::MAX);
+
+    const MIN_MATE_IN: Self = Self::mate_in(u8::MIN);
+
+    const MAX_MATED_IN: Self = Self::mated_in(u8::MAX);
+
+    const MIN_MATED_IN: Self = Self::mated_in(u8::MIN);
+    
     pub const fn cp(centipawns: i16) -> Self {
         Self(centipawns)
     }
@@ -68,14 +78,9 @@ impl Eval {
     }
 
     pub const fn kind(self) -> EvalKind {
-        const MAX_MATE_IN: i16 = Eval::mate_in(u8::MAX).0;
-        const MIN_MATE_IN: i16 = Eval::mate_in(u8::MIN).0;
-        const MAX_MATED_IN: i16 = Eval::mated_in(u8::MAX).0;
-        const MIN_MATED_IN: i16 = Eval::mated_in(u8::MIN).0;
-        
         match self.0 {
-            v if v >= MAX_MATE_IN => EvalKind::MateIn((MIN_MATE_IN - v) as u8),
-            v if v <= MAX_MATED_IN => EvalKind::MatedIn((v - MIN_MATED_IN) as u8),
+            v if v >= Self::MAX_MATE_IN.0 => EvalKind::MateIn((Self::MIN_MATE_IN.0 - v) as u8),
+            v if v <= Self::MAX_MATED_IN.0 => EvalKind::MatedIn((v - Self::MIN_MATED_IN.0) as u8),
             v => EvalKind::Centipawn(v),
         }
     }
@@ -139,24 +144,14 @@ macro_rules! impl_saturating_math_ops {
     ($($fn:ident),*) => {
         impl Eval {$(
             #[inline(always)]
-            pub const fn $fn(self, other: Self) -> Self {
-                Self(self.0.$fn(other.0))
+            pub fn $fn(self, other: Self) -> Self {
+                Self(self.0.$fn(other.0).clamp(Self::MAX_MATED_IN.0 + 1, Self::MAX_MATE_IN.0 - 1))
             }
         )*}
     };
 }
 impl_saturating_math_ops! {
     saturating_add,
+    saturating_sub,
     saturating_mul
-}
-
-impl Eval {
-    #[inline(always)]
-    pub const fn saturating_sub(self, other: Self) -> Self {
-        let mut result = self.0.saturating_sub(other.0);
-        if result == i16::MIN {
-            result += 1;
-        }
-        Self(result)
-    }
 }
