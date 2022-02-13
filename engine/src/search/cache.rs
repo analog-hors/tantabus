@@ -105,24 +105,10 @@ impl CacheTable {
         let hash = board.hash();
         let index = self.hash_to_index(hash);
         let old = &mut self.table[index];
-        if let Some((old_hash, old_entry)) = old {
-            let mut replace = true;
-            if *old_hash == hash {
-                if old_entry.depth >= entry.depth {
-                    replace = match old_entry.kind {
-                        TableEntryKind::Exact => false,
-                        TableEntryKind::LowerBound => entry.eval > old_entry.eval,
-                        TableEntryKind::UpperBound => entry.eval < old_entry.eval
-                    };
-                }
-            }
-            if replace {
-                *old = Some((hash, entry));
-            }
-        } else {
+        if old.is_none() {
             self.len += 1;
-            *old = Some((hash, entry));
         }
+        *old = Some((hash, entry));
     }
 
     pub fn capacity(&self) -> u32 {
