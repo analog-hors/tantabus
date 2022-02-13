@@ -207,6 +207,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     )?;
                     window.narrow_alpha(eval);
                     if window.empty() {
+                        //TODO This might not bet correct since we can return a false mate score.
+                        //Not quite sure what to do in that case though.
+                        //NMP operates on the assumption that some other move works too anyway though.
                         return Ok(eval);
                     }
                 }

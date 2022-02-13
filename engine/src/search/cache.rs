@@ -73,8 +73,28 @@ impl CacheTable {
             if entry_hash == hash {
                 entry.eval = match entry.eval.kind() {
                     EvalKind::Centipawn(_) => entry.eval,
-                    EvalKind::MateIn(p) => Eval::mate_in(p + ply_index),
-                    EvalKind::MatedIn(p) => Eval::mated_in(p + ply_index),
+                    // Mate scores can sometimes get really big.
+                    // I'm not sure why this happens.
+                    // Ethereal seems to have had a similar problem at some point.
+                    // It seems related to bad interactions with "unresolved" mates and TT grafting.
+                    // Scores seem to be stored as large, inexact bounds.
+                    // In any case, for now, this ignores it by turning it into a high eval instead of a mate score.
+                    EvalKind::MateIn(p) => {
+                        let p = p as u32 + ply_index as u32;
+                        if p <= u8::MAX as u32 {
+                            Eval::mate_in(p as u8)
+                        } else {
+                            Eval::cp((20000 - p - u8::MAX as u32) as i16)
+                        }
+                    },
+                    EvalKind::MatedIn(p) => {
+                        let p = p as u32 + ply_index as u32;
+                        if p <= u8::MAX as u32 {
+                            Eval::mated_in(p as u8)
+                        } else {
+                            Eval::cp(-((20000 - p - u8::MAX as u32) as i16))
+                        }
+                    },
                 };
                 return Some(entry);
             }
