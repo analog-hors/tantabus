@@ -3,7 +3,6 @@ use arrayvec::ArrayVec;
 
 use crate::eval::*;
 
-use super::SearchHandler;
 use super::search::{KillerEntry, Searcher};
 
 // CITE: Static exchange evaluation.
@@ -102,56 +101,116 @@ pub enum MoveScore {
     Pv
 }
 
-pub struct MoveList {
-    move_list: ArrayVec<(Move, MoveScore), 218>,
-    yielded: usize
+type ScoredMove = (Move, MoveScore);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum MoveGenStage {
+    Pv,
+    Remaining,
+    Finished
 }
 
-impl<H: SearchHandler> Searcher<'_, H> {
-    pub fn new_movelist(&mut self, board: &Board, pv_move: Option<Move>, killers: KillerEntry) ->  MoveList {
-        let mut move_list = ArrayVec::new();
+fn swap_max_move_to_front(moves: &mut [ScoredMove]) -> Option<&ScoredMove> {
+    let max_index = moves
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, (_, score))| score)
+        .map(|(i, _)| i);
+    if let Some(max_index) = max_index {
+        moves.swap(max_index, 0);
+    }
+    moves.first()
+}
 
-        let their_pieces = board.colors(!board.side_to_move());
-        board.generate_moves(|mut moves| {
-            if let Some(pv_move) = pv_move {
-                if moves.from == pv_move.from && moves.to.has(pv_move.to) {
-                    moves.to ^= pv_move.to.bitboard();
-                    move_list.push((pv_move, MoveScore::Pv));
-                }
-            }
-            let mut capture_moves = moves;
-            capture_moves.to &= their_pieces;
-            let mut quiet_moves = moves;
-            quiet_moves.to ^= capture_moves.to;
+pub struct MoveList<'b> {
+    board: &'b Board,
+    move_list: ArrayVec<ScoredMove, 218>,
+    yielded: usize,
+    stage: MoveGenStage,
+    pv_move: Option<Move>,
+    killers: KillerEntry
+}
 
-            for mv in quiet_moves {
-                let score = if killers.contains(&mv) {
-                    MoveScore::Killer
-                } else {
-                    let history = self.data.history_table.get(board, mv);
-                    MoveScore::Quiet(history)
-                };
-                move_list.push((mv, score));
-            }
-
-            for mv in capture_moves {
-                let eval = static_exchange_evaluation(board, mv);
-                let score = if eval >= Eval::ZERO {
-                    MoveScore::Capture(eval)
-                } else {
-                    MoveScore::LosingCapture(eval)
-                };
-                move_list.push((mv, score));
-            }
-            false
-        });
-        MoveList {
-            move_list,
-            yielded: 0
+impl<'b> MoveList<'b> {
+    pub fn new(board: &'b Board, pv_move: Option<Move>, killers: KillerEntry) -> Self {
+        Self {
+            board,
+            move_list: ArrayVec::new(),
+            yielded: 0,
+            stage: MoveGenStage::Pv,
+            pv_move,
+            killers
         }
     }
 
-    pub fn qsearch_movelist(&mut self, board: &Board) ->  MoveList {
+    pub fn yielded(&self) -> &[ScoredMove] {
+        &self.move_list[..self.yielded]
+    }
+
+    pub fn pick<H>(&mut self, searcher: &Searcher<H>) -> Option<(usize, ScoredMove)> {
+        if self.yielded >= self.move_list.len() && self.stage == MoveGenStage::Pv {
+            if let Some(pv_move) = self.pv_move {
+                self.move_list.push((pv_move, MoveScore::Pv));
+            }
+            self.stage = MoveGenStage::Remaining;
+        }
+        if self.yielded >= self.move_list.len() && self.stage == MoveGenStage::Remaining {
+            let their_pieces = self.board.colors(!self.board.side_to_move());
+            self.board.generate_moves(|mut moves| {
+                if let Some(pv_move) = self.pv_move {
+                    if moves.from == pv_move.from && moves.to.has(pv_move.to) {
+                        moves.to ^= pv_move.to.bitboard();
+                    }
+                }
+                let mut capture_moves = moves;
+                capture_moves.to &= their_pieces;
+                let mut quiet_moves = moves;
+                quiet_moves.to ^= capture_moves.to;
+
+                for mv in quiet_moves {
+                    let score = if self.killers.contains(&mv) {
+                        MoveScore::Killer
+                    } else {
+                        let history = searcher.data.history_table.get(self.board, mv);
+                        MoveScore::Quiet(history)
+                    };
+                    self.move_list.push((mv, score));
+                }
+
+                for mv in capture_moves {
+                    let eval = static_exchange_evaluation(self.board, mv);
+                    let score = if eval >= Eval::ZERO {
+                        MoveScore::Capture(eval)
+                    } else {
+                        MoveScore::LosingCapture(eval)
+                    };
+                    self.move_list.push((mv, score));
+                }
+                false
+            });
+            self.stage = MoveGenStage::Finished;
+        }
+
+        let to_yield = &mut self.move_list[self.yielded..];
+        if let Some(&result) = swap_max_move_to_front(to_yield) {
+            let index = self.yielded;
+            self.yielded += 1;
+            return Some((index, result));
+        }
+        None
+    }
+}
+
+// 12 pieces that can capture on 8 squares, 4 pieces that can capture on 4 squares.
+// 12 * 8 + 4 * 4 = 112
+// Promotions included.
+pub struct QSearchMoveList {
+    move_list: ArrayVec<ScoredMove, 112>,
+    yielded: usize
+}
+
+impl QSearchMoveList {
+    pub fn new(board: &Board) -> Self {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());
@@ -170,34 +229,18 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
             false
         });
-        MoveList {
+        Self {
             move_list,
             yielded: 0
         }
     }
-}
 
-impl MoveList {
-    pub fn yielded(&self) -> &[(Move, MoveScore)] {
-        &self.move_list[..self.yielded]
-    }
-}
-
-impl Iterator for MoveList {
-    type Item = (Move, MoveScore);
-
-    fn next(&mut self) -> Option<Self::Item> {
+    pub fn pick(&mut self) -> Option<(usize, ScoredMove)> {
         let to_yield = &mut self.move_list[self.yielded..];
-        let max_index = to_yield
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, (_, score))| score)
-            .map(|(i, _)| i);
-        if let Some(max_index) = max_index {
-            to_yield.swap(max_index, 0);
-            let result = *to_yield.first().unwrap();
+        if let Some(&result) = swap_max_move_to_front(to_yield) {
+            let index = self.yielded;
             self.yielded += 1;
-            return Some(result);
+            return Some((index, result));
         }
         None
     }

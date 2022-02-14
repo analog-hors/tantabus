@@ -5,7 +5,7 @@ use crate::eval::*;
 use super::SearchHandler;
 use super::cache::*;
 use super::helpers::move_is_quiet;
-use super::moves::MoveScore;
+use super::moves::*;
 use super::window::Window;
 use super::oracle;
 use super::history::HistoryTable;
@@ -214,7 +214,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 }
             }
-            let mut moves = self.new_movelist(
+            let mut moves = MoveList::new(
                 board,
                 pv_move,
                 self.data.killers[ply_index as usize].clone()
@@ -230,7 +230,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 false
             };
             let mut quiets_to_check = lmp_quiets_to_check(depth);
-            for (i, (mv, move_score)) in (&mut moves).enumerate() {
+            while let Some((i, (mv, move_score))) = moves.pick(self) {
                 // CITE: Late move pruning.
                 // We check only a certain number of quiets per node given some depth.
                 // This was suggested to me by the Black Marlin author.
@@ -381,7 +381,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            for (mv, _) in self.qsearch_movelist(board) {
+            let mut move_list = QSearchMoveList::new(board);
+            while let Some((_, (mv, _))) = move_list.pick() {
                 let mut child = board.clone();
                 child.play_unchecked(mv);
                 let eval = -self.quiescence(
