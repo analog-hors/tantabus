@@ -110,18 +110,6 @@ enum MoveGenStage {
     Finished
 }
 
-fn swap_max_move_to_front(moves: &mut [ScoredMove]) -> Option<&ScoredMove> {
-    let max_index = moves
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, (_, score))| score)
-        .map(|(i, _)| i);
-    if let Some(max_index) = max_index {
-        moves.swap(max_index, 0);
-    }
-    moves.first()
-}
-
 pub struct MoveList<'b> {
     board: &'b Board,
     move_list: ArrayVec<ScoredMove, 218>,
@@ -188,11 +176,12 @@ impl<'b> MoveList<'b> {
                 }
                 false
             });
+            pdqsort::sort_by_key(&mut self.move_list[self.yielded..], |(_, s)| std::cmp::Reverse(*s));
             self.stage = MoveGenStage::Finished;
         }
 
         let to_yield = &mut self.move_list[self.yielded..];
-        if let Some(&result) = swap_max_move_to_front(to_yield) {
+        if let Some(&result) = to_yield.first() {
             let index = self.yielded;
             self.yielded += 1;
             return Some((index, result));
@@ -229,6 +218,8 @@ impl QSearchMoveList {
             }
             false
         });
+        pdqsort::sort_by_key(&mut move_list, |(_, s)| std::cmp::Reverse(*s));
+
         Self {
             move_list,
             yielded: 0
@@ -237,7 +228,7 @@ impl QSearchMoveList {
 
     pub fn pick(&mut self) -> Option<(usize, ScoredMove)> {
         let to_yield = &mut self.move_list[self.yielded..];
-        if let Some(&result) = swap_max_move_to_front(to_yield) {
+        if let Some(&result) = to_yield.first() {
             let index = self.yielded;
             self.yielded += 1;
             return Some((index, result));
