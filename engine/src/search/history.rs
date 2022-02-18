@@ -27,5 +27,6 @@ impl HistoryTable {
             *history -= change;
         }
         *history -= decay;
+        *history = (*history).clamp(-512, 512);
     }
 }
