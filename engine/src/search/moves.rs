@@ -171,7 +171,7 @@ impl<'b> MoveList<'b> {
                     let score = if self.killers.contains(&mv) {
                         MoveScore::Killer
                     } else {
-                        let history = searcher.data.history_table.get(self.board, mv);
+                        let history = searcher.data.history_table.get(self.board.side_to_move(), mv);
                         MoveScore::Quiet(history)
                     };
                     self.move_list.push((mv, score));

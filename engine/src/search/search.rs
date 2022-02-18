@@ -30,7 +30,7 @@ pub struct SearchSharedState<H> {
     pub cache_table: CacheTable
 }
 
-pub(crate) type KillerEntry = ArrayVec<Move, 2>;
+pub(crate) type KillerEntry = ArrayVec<Move, 3>;
 
 pub struct SearchData {
     pub game_history: Vec<u64>,
@@ -264,7 +264,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
                 if depth >= LMR_MIN_DEPTH && quiet && !in_check && !gives_check {
-                    let history = self.data.history_table.get(board, mv);
+                    let history = self.data.history_table.get(board.side_to_move(), mv);
                     reduction += lmr_calculate_reduction(i, depth, history);
                 }
                 let mut eval = -self.search_node(
@@ -293,23 +293,30 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
                 window.narrow_alpha(eval);
                 if window.empty() {
-                    if move_is_quiet(mv, &board) {
-                        // CITE: Killer moves.
-                        // https://www.chessprogramming.org/Killer_Heuristic
-                        let killers = &mut self.data.killers[ply_index as usize];
-                        if killers.is_full() {
-                            killers.remove(0);
-                        }
-                        killers.push(mv);
+                    if quiet {
                         // CITE: History heuristic.
                         // https://www.chessprogramming.org/History_Heuristic
-                        self.data.history_table.update(board, mv, depth, true);
+                        self.data.history_table.update(board.side_to_move(), mv, depth, true);
                     }
                     // CITE: We additionally punish the history of quiet moves that don't produce cutoffs.
                     // Suggested by the Black Marlin author and additionally observed in MadChess.
                     for &(prev_mv, _) in moves.yielded() {
                         if prev_mv != mv && move_is_quiet(prev_mv, &board) {
-                            self.data.history_table.update(board, prev_mv, depth, false);
+                            self.data.history_table.update(board.side_to_move(), prev_mv, depth, false);
+                        }
+                    }
+                    if quiet {
+                        // CITE: Killer moves.
+                        // https://www.chessprogramming.org/Killer_Heuristic
+                        let killers = &mut self.data.killers[ply_index as usize];
+                        if killers.try_push(mv).is_err() {
+                            let history = self.data.history_table.get(board.side_to_move(), mv);
+                            for killer in killers.iter_mut() {
+                                if history >= self.data.history_table.get(board.side_to_move(), *killer) {
+                                    *killer = mv;
+                                    break;
+                                }
+                            }
                         }
                     }
                     break;
