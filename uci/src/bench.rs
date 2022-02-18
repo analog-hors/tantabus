@@ -32,7 +32,7 @@ const POSITIONS: &[&str] = &[
     "8/1p2k3/4rp2/p2R3Q/2q2B2/6P1/5P1P/6K1 b - - 14 73",
 ];
 
-const DEPTH: u8 = 8;
+const DEPTH: u8 = 10;
 const CACHE: usize = 16_000_000;
 
 #[derive(Default)]
