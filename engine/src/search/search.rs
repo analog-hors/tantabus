@@ -30,7 +30,8 @@ pub struct SearchSharedState<H> {
     pub cache_table: CacheTable
 }
 
-pub(crate) type KillerEntry = ArrayVec<Move, 2>;
+pub const KILLER_ENTRIES: usize = 2;
+pub(crate) type KillerEntry = ArrayVec<Move, KILLER_ENTRIES>;
 
 pub struct SearchData {
     pub game_history: Vec<u64>,
