@@ -261,6 +261,18 @@ fn main() {
                             options.options.engine_options.max_depth = depth.try_into().unwrap();
                         }
                         //TODO implement the rest
+                        if let Some(_) = search_control.nodes {
+                            let warn = "WARNING: The nodes search control is currently unimplemented.";
+                            send_message(UciMessage::info_string(warn.to_owned()));
+                        }
+                        if let Some(_) = search_control.mate {
+                            let warn = "WARNING: The mate search control is currently unimplemented.";
+                            send_message(UciMessage::info_string(warn.to_owned()));
+                        }
+                        if !search_control.search_moves.is_empty() {
+                            let warn = "WARNING: The search_moves search control is currently unimplemented.";
+                            send_message(UciMessage::info_string(warn.to_owned()));
+                        }
                     }
                     let (init_pos, moves) = position.clone().unwrap();
                     let terminator = Arc::new(AtomicBool::new(false));
