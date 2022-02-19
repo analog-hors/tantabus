@@ -247,7 +247,7 @@ fn main() {
                                 options.options.minimum_time_used_per_move
                             )
                         }
-                        Some(UciTimeControl::Ponder) => todo!(),
+                        Some(UciTimeControl::Ponder) => todo!("Ponder is unimplemented."),
                         None | Some(UciTimeControl::Infinite) => StandardTimeManager::new(
                             Duration::ZERO,
                             0.0,
