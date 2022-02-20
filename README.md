@@ -17,10 +17,12 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Check extensions
 - Reductions
     - Late move reductions
+    - History reductions
 - Pruning
     - Null move pruning
     - Futility pruning
     - Reverse futility pruning
+    - Late move pruning
     - Negative SEE moves pruned in QSearch
 - Move ordering
     - Hash move
@@ -37,6 +39,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - Bishop pair bonus
 - Rook on open file bonus
 - Rook on semiopen file bonus
+- Basic king safety using "virtual queen mobility" and attacked squares around the king
 - Tapered/phased evaluation (using Fruit-like method)
 ### Time management
 - Uses a fixed percentage of time left
