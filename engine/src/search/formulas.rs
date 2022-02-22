@@ -10,21 +10,21 @@ pub fn nmp_calculate_reduction(static_eval: Eval, window: Window) -> u8 {
         if eval >= beta {
             // CITE: This kind of reduction increase when eval >= beta was first observed in MadChess.
             // https://www.madchess.net/2021/02/09/madchess-3-0-beta-f231dac-pvs-and-null-move-improvements/
-            reduction += ((eval as i32 - beta as i32) / 100).min(2) as u8;
+            reduction += ((eval as i32 - beta as i32) / 137).min(2) as u8;
         }
     }
     reduction
 }
 
 pub fn lmr_calculate_reduction(i: usize, depth: u8, history: i32) -> u8 {
-    let mut reduction: i8 = if i < 3 {
+    let mut reduction: i8 = if i < 2 {
         0
     } else if depth < 7 {
         1
     } else {
         2
     };
-    reduction -= (history / 200) as i8;
+    reduction -= (history / 238) as i8;
     reduction.max(0) as u8
 }
 
@@ -47,7 +47,7 @@ pub fn futility_margin(depth: u8) -> Option<Eval> {
 
 pub fn reverse_futility_margin(depth: u8) -> Option<Eval> {
     if depth < 5 {
-        Some(Eval::cp(100 * depth as i16))
+        Some(Eval::cp(77 * depth as i16))
     } else {
         None
     }
