@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use indexmap::IndexMap;
 use tantabus::search::EngineOptions;
 use vampirc_uci::UciOptionConfig;
@@ -7,9 +5,7 @@ use vampirc_uci::UciOptionConfig;
 pub struct UciOptions {
     pub engine_options: EngineOptions,
     pub cache_table_size: usize,
-    pub chess960: bool,
-    pub percent_time_used_per_move: f32,
-    pub minimum_time_used_per_move: Duration
+    pub chess960: bool
 }
 
 type Handler = Box<dyn Fn(&mut UciOptions, String)>;
@@ -26,9 +22,7 @@ impl UciOptionsHandler {
         let options = UciOptions {
             engine_options: EngineOptions::default(),
             cache_table_size: 16 * MEGABYTE,
-            chess960: false,
-            percent_time_used_per_move: 0.05f32,
-            minimum_time_used_per_move: Duration::ZERO
+            chess960: false
         };
         let mut handlers = IndexMap::new();
         macro_rules! add_handlers {
@@ -74,28 +68,6 @@ impl UciOptionsHandler {
                 max: Some(1)
             } => |_, _| {
                 // Implementation of the "Laziest SMP" algorithm
-            }
-            UciOptionConfig::Spin {
-                name: "PercentTimePerMove".to_owned(),
-                default: Some((options.percent_time_used_per_move * 100.0) as i64),
-                min: Some(0),
-                max: Some(100)
-            } => |options, value| {
-                options.percent_time_used_per_move = value
-                    .parse::<f32>()
-                    .unwrap()
-                    / 100f32;
-            }
-            UciOptionConfig::Spin {
-                name: "MinimumTimeUsedPerMove".to_owned(),
-                default: Some(options.minimum_time_used_per_move.as_millis() as i64),
-                min: Some(0),
-                max: Some(1000 * 60 * 60 * 24)
-            } => |options, value| {
-                let time = value
-                    .parse()
-                    .unwrap();
-                options.minimum_time_used_per_move = Duration::from_millis(time);
             }
         }
         Self {
