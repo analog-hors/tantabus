@@ -17,6 +17,14 @@ const fn e(mg: i16, eg: i16) -> PhasedEval {
     PhasedEval(mg, eg)
 }
 
+// CITE: These constants were tuned using various datasets.
+// It was first tuned on a Zurichess dataset, then
+// an Ethereal dataset, then a dataset called
+// lichess-big3-resolved linked to me by Jay (Berserk author).
+// Zurichess set: quiet-labeled.v7.epd from https://bitbucket.org/zurichess/tuner/downloads/
+// Ethereal set: E12.33-1M-D12-Resolved from https://talkchess.com/forum3/viewtopic.php?t=75350
+// lichess-big3-resolved: https://drive.google.com/file/d/1GfrNuDfD9Le-ZKKLxTHu0i3z6fbTn8JJ/view?usp=sharing
+// The tuning code is currently private because it is cringe.
 pub const EVAL_WEIGHTS: EvalWeights = EvalTerms {
     piece_tables: PstEvalSet {
         pawn: KingRelativePst([

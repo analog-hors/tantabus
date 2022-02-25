@@ -43,12 +43,15 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - Tapered/phased evaluation (using Fruit-like method)
 ### Time management
 - Uses a fixed percentage of time left
+- Aborts if it is estimated that the next iteration cannot be completed in time.
 
 ## Thanks
 Many engines have been very useful resources in the development of Tantabus.<br>
 A (potentially incomplete) list of citations is listed in the code, annotated with `// CITE` comments.<br>
 A (potentially incomplete) list of special thanks in no particular order:
 - [Pali (Black Marlin author)](https://github.com/dsekercioglu/blackmarlin), for assisting me with various things during the development of Tantabus on top of being like, cool and stuff.
-- [Jay (Berserk author)](https://github.com/jhonnold/berserk) for hosting the OpenBench instance that Tantabus develops on.
-- [Andrew (OpenBench and Ethereal author)](https://github.com/AndyGrant/Ethereal) for creating OpenBench. It has been an immensely helpful tool for engine development.
+- [Jay (Berserk author)](https://github.com/jhonnold/berserk) for having hosted the OpenBench instance that Tantabus developed on, as well as suggesting various improvements.
+- [Andrew (OpenBench and Ethereal author)](https://github.com/AndyGrant/Ethereal) for OpenBench. OpenBench has been an immensely helpful tool for engine development. Ethereal is also a very influential engine.
+- MinusKelvin ([Cold Clear](https://github.com/MinusKelvin/cold-clear) and [Frozenight](https://github.com/MinusKelvin/frozenight) author), for being like, really cool and stuff.
+- Anyone who donated CPU time to instance that hosts Tantabus.
 - Other people I probably forgot about.
