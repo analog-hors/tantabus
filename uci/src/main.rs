@@ -283,13 +283,15 @@ fn main() {
                         let cache_table = cache_table
                             .take()
                             .unwrap_or_else(|| CacheTable::new_with_size(cache_table_size).unwrap());
-                        let options = options.options.engine_options.clone();
+                        let engine_options = options.options.engine_options.clone();
+                        let search_params = options.options.search_params.clone();
                         move || {
                             let mut search_state = Engine::new(
                                 &mut handler,
                                 init_pos,
                                 moves,
-                                options,
+                                engine_options,
+                                search_params,
                                 cache_table
                             );
                             search_state.search();

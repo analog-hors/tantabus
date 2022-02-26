@@ -1,9 +1,10 @@
 use indexmap::IndexMap;
-use tantabus::search::EngineOptions;
+use tantabus::search::{EngineOptions, SearchParams};
 use vampirc_uci::UciOptionConfig;
 
 pub struct UciOptions {
     pub engine_options: EngineOptions,
+    pub search_params: SearchParams,
     pub cache_table_size: usize,
     pub chess960: bool
 }
@@ -21,6 +22,7 @@ impl UciOptionsHandler {
     pub fn new() -> Self {
         let options = UciOptions {
             engine_options: EngineOptions::default(),
+            search_params: SearchParams::default(),
             cache_table_size: 16 * MEGABYTE,
             chess960: false
         };
@@ -59,7 +61,7 @@ impl UciOptionsHandler {
                 options.cache_table_size = value
                     .parse::<usize>()
                     .unwrap()
-                    * MEGABYTE
+                    * MEGABYTE;
             }
             UciOptionConfig::Spin {
                 name: "Threads".to_owned(),
@@ -70,6 +72,40 @@ impl UciOptionsHandler {
                 // Implementation of the "Laziest SMP" algorithm
             }
         }
+        macro_rules! add_search_param_handlers {
+            ($([$($field:tt)*])*) => {
+                add_handlers! {
+                    $(UciOptionConfig::Spin {
+                        name: concat!("TUNE_", stringify!($($field)*)).replace(' ', ""),
+                        default: Some(options.search_params.$($field)* as i64),
+                        min: Some(i32::MIN as i64),
+                        max: Some(i32::MAX as i64)
+                    } => |options, value| {
+                        options.search_params.$($field)* = value
+                            .parse()
+                            .unwrap();
+                    })*
+                }
+            }
+        }
+        // Modify for exposing search params for tuning
+        add_search_param_handlers! {
+            // [lmr.min_depth]
+            // [lmr.bonus_reduction_index]
+            // [lmr.bonus_reduction_min_depth]
+            // [lmr.history_reduction_div]
+            // [nmp.base_reduction]
+            // [nmp.margin_div]
+            // [nmp.margin_max_reduction]
+            // [lmp.quiets_to_check[0]]
+            // [lmp.quiets_to_check[1]]
+            // [lmp.quiets_to_check[2]]
+            // [fp.margins[0]]
+            // [fp.margins[1]]
+            // [rfp.base_margin]
+            // [rfp.max_depth]
+        }
+
         Self {
             handlers,
             options

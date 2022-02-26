@@ -12,9 +12,10 @@ mod moves;
 mod helpers;
 mod oracle;
 mod history;
-mod formulas;
+mod params;
 
 use search::*;
+pub use params::*;
 use window::Window;
 pub use cache::{CacheTable, TableEntry, TableKeyValueEntry};
 
@@ -70,6 +71,7 @@ impl<H: SearchHandler> Engine<H> {
         init_pos: Board,
         moves: impl IntoIterator<Item=Move>,
         options: EngineOptions,
+        search_params: SearchParams,
         cache_table: CacheTable
     ) -> Self {
         let mut history = Vec::with_capacity(options.max_depth.get() as usize);
@@ -84,7 +86,8 @@ impl<H: SearchHandler> Engine<H> {
             shared: SearchSharedState {
                 handler,
                 history,
-                cache_table
+                cache_table,
+                search_params
             },
             options
         }
