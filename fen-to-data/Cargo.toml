@@ -1,5 +1,5 @@
 [package]
-name = "tantabus"
+name = "tantabus-fen-to-data"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,8 +7,4 @@ edition = "2021"
 
 [dependencies]
 cozy-chess = "0.2.0"
-arrayvec = "0.7.2"
-serde = { version = "1.0", features = ["derive"] }
-pdqsort = "1.0.3"
-num-traits = "0.2"
-bytemuck = "1.8.0"
+tantabus = { path = "../engine" }

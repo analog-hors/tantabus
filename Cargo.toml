@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "engine",
-    "uci"
+    "uci",
+    "fen-to-data"
 ]
 
 [profile.dev]

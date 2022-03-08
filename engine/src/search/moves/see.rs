@@ -3,6 +3,17 @@ use arrayvec::ArrayVec;
 
 use crate::eval::*;
 
+fn piece_value(piece: Piece) -> Eval {
+    Eval::cp(match piece {
+        Piece::Pawn => 100,
+        Piece::Knight => 320,
+        Piece::Bishop => 330,
+        Piece::Rook => 500,
+        Piece::Queen => 900,
+        Piece::King => 0,
+    })
+}
+
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
@@ -33,7 +44,7 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     let mut captures = ArrayVec::<Eval, 32>::new();
     'exchange: loop {
         //"Capture" victim
-        captures.push(Eval::cp(*PIECE_VALUES.get(victim)));
+        captures.push(piece_value(victim));
 
         //"Move" attacker to target square
         let attacker_bitboard = attacker_sq.bitboard();
