@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from struct import Struct
 
 FEATURES = 768
-FT_OUT   = 16
+FT_OUT   = 32
 L1_OUT   = 1
 
 ACTIVATION_RANGE = 127

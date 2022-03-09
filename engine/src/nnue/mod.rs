@@ -7,7 +7,7 @@ use self::layers::*;
 use self::ops::*;
 
 const FEATURES: usize = 768;
-const FT_OUT: usize = 16;
+const FT_OUT: usize = 32;
 const L1_OUT: usize = 1;
 
 const ACTIVATION_RANGE: i8 = 127;
