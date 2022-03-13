@@ -1,7 +1,12 @@
 use std::io::{stdin, stdout, Write, BufRead};
+use std::env::args;
+
+use rayon::prelude::*;
 
 use cozy_chess::*;
 use tantabus::nnue::feature;
+
+mod analyze;
 
 const SCALE: f32 = 115.0;
 
@@ -11,13 +16,41 @@ fn sigmoid(n: f32) -> f32 {
 
 fn main() {
     let mut stdout = stdout();
-    for line in stdin().lock().lines().map(Result::unwrap) {
-        let (fen, eval) = line.trim().split_once(" | ").unwrap();
-        let board = fen.parse().unwrap();
-        let eval = eval.parse::<f32>().unwrap();
-        let win_rate = sigmoid(eval / SCALE);
-        write_features(&mut stdout, &board, win_rate);
+    let stdin = stdin();
+    let node_limit = args().nth(1).expect("Expected node limit").parse().expect("Invalid node limit");
+    let lines = stdin.lock().lines().map(Result::unwrap);
+    let mut boards = lines.map(|f| f.parse::<Board>().unwrap());
+    loop {
+        let boards = (&mut boards).take(1024).collect::<Vec<_>>();
+        if boards.len() == 0 {
+            break;
+        }
+        let boards = boards
+            .into_par_iter()
+            .filter_map(|board| to_data(board, node_limit))
+            .collect::<Vec<_>>();
+        for (board, win_rate) in boards {
+            write_features(&mut stdout, &board, win_rate);
+        }
     }
+}
+
+fn to_data(board: Board, node_limit: u64) -> Option<(Board, f32)> {
+    let analysis = analyze::analyze(board.clone(), node_limit);
+    let mut capture_squares = board.colors(!board.side_to_move());
+    if let Some(ep) = board.en_passant() {
+        let ep = Square::new(ep, Rank::Third.relative_to(!board.side_to_move()));
+        capture_squares |= ep.bitboard();
+    }
+    let is_quiet = board.checkers().is_empty()
+        && !capture_squares.has(analysis.mv.to)
+        && analysis.eval.as_cp().is_some();
+    if !is_quiet {
+        return None;
+    }
+    let eval = analysis.eval.as_cp().unwrap() as f32;
+    let win_rate = sigmoid(eval / SCALE);
+    Some((board, win_rate))
 }
 
 fn write_features(out: &mut impl Write, board: &Board, win_rate: f32) {

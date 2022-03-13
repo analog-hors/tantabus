@@ -136,14 +136,14 @@ class Trainer:
     state: TrainerState
     dataset: PositionSet
     dataloader: DataLoader[Tuple[List[Tensor], Tensor]]
-    criterion: nn.BCELoss
+    criterion: nn.MSELoss
 
     def __init__(self, checkpoint_dir: str, state: TrainerState, dataset: PositionSet):
         self.checkpoint_dir = checkpoint_dir
         self.state = state
         self.dataset = dataset
         self.dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-        self.criterion = nn.BCELoss()
+        self.criterion = nn.MSELoss()
 
     def train(self):
         self.state.model.train()
