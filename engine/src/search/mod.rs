@@ -4,6 +4,7 @@ use std::num::NonZeroU8;
 use cozy_chess::*;
 
 use crate::eval::Eval;
+use crate::nnue::Nnue;
 
 mod search;
 mod window;
@@ -13,11 +14,13 @@ mod helpers;
 mod oracle;
 mod history;
 mod params;
+mod position;
 
 use search::*;
 pub use params::*;
 use window::Window;
 pub use cache::{CacheTable, TableEntry, TableKeyValueEntry};
+use position::Position;
 
 pub trait SearchHandler {
     fn stop_search(&self) -> bool;
@@ -60,7 +63,7 @@ impl Default for EngineOptions {
 }
 
 pub struct Engine<H> {
-    board: Board,
+    pos: Position<'static>,
     shared: SearchSharedState<H>,
     options: EngineOptions
 }
@@ -82,7 +85,7 @@ impl<H: SearchHandler> Engine<H> {
         }
 
         Self {
-            board,
+            pos: Position::new(&Nnue::DEFAULT, board),
             shared: SearchSharedState {
                 handler,
                 history,
@@ -112,7 +115,7 @@ impl<H: SearchHandler> Engine<H> {
                 }
                 let result = search_data.search(
                     &mut self.shared,
-                    &self.board,
+                    &self.pos,
                     depth,
                     aspiration_window
                 );
@@ -128,7 +131,7 @@ impl<H: SearchHandler> Engine<H> {
                 prev_eval = Some(eval);
                 let mut principal_variation = Vec::new();
                 let mut history = self.shared.history.clone();
-                let mut board = self.board.clone();
+                let mut board = self.pos.board().clone();
                 while let Some(entry) = self.shared.cache_table.get(&board, 0) {
                     history.push(board.hash());
                     board.play_unchecked(entry.best_move);

@@ -2,6 +2,7 @@ use arrayvec::ArrayVec;
 use cozy_chess::*;
 
 use crate::eval::*;
+use super::position::Position;
 use super::{SearchHandler, SearchParams};
 use super::cache::*;
 use super::helpers::move_is_quiet;
@@ -52,7 +53,7 @@ impl SearchData {
     pub fn search<H: SearchHandler>(
         &mut self,
         shared: &mut SearchSharedState<H>,
-        board: &Board,
+        pos: &Position,
         depth: u8,
         window: Window
     ) -> Result<SearcherResult, ()> {
@@ -64,7 +65,7 @@ impl SearchData {
         };
         let eval = searcher.search_node(
             Node::Root,
-            &board,
+            pos,
             depth,
             0,
             window
@@ -97,16 +98,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
     pub fn search_node(
         &mut self,
         node: Node,
-        board: &Board,
+        pos: &Position,
         mut depth: u8,
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
-        self.data.game_history.push(board.hash());
+        self.data.game_history.push(pos.board().hash());
         let result = (|| {
             self.stats.seldepth = self.stats.seldepth.max(ply_index);
 
-            let in_check = !board.checkers().is_empty();
+            let in_check = !pos.board().checkers().is_empty();
 
             if in_check {
                 // CITE: Check extensions.
@@ -115,11 +116,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
 
             if depth == 0 {
-                if node != Node::Root && self.repetitions(&board) > 1 {
+                if node != Node::Root && self.repetitions(pos.board()) > 1 {
                     return Ok(Eval::DRAW);
                 }
                 // We are allowed to search in this node as qsearch doesn't track history
-                return Ok(self.quiescence(board, ply_index, window));
+                return Ok(self.quiescence(pos, ply_index, window));
             }
 
             self.stats.nodes += 1;
@@ -130,22 +131,22 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return Err(());
             }
 
-            if node != Node::Root && self.repetitions(&board) > 0 {
+            if node != Node::Root && self.repetitions(&pos.board()) > 0 {
                 return Ok(Eval::DRAW);
             }
-            match board.status() {
+            match pos.board().status() {
                 GameStatus::Won => return Ok(Eval::mated_in(ply_index)),
                 GameStatus::Drawn => return Ok(Eval::DRAW),
                 GameStatus::Ongoing => {}
             }
             if node != Node::Root {
-                if let Some(eval) = oracle::oracle(&board) {
+                if let Some(eval) = oracle::oracle(pos.board()) {
                     return Ok(eval);
                 }
             }
 
             let mut pv_move = None;
-            let cache_entry = self.shared.cache_table.get(&board, ply_index);
+            let cache_entry = self.shared.cache_table.get(pos.board(), ply_index);
             if let Some(entry) = cache_entry {
                 pv_move = Some(entry.best_move);
                 if !matches!(node, Node::Root | Node::Pv) && entry.depth >= depth {
@@ -168,7 +169,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         None
                     }
                 })
-                .unwrap_or_else(|| evaluate(board));
+                .unwrap_or_else(|| pos.evaluate());
 
             if !matches!(node, Node::Root | Node::Pv) {
                 // CITE: Reverse futility pruning.
@@ -181,11 +182,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let our_pieces = board.colors(board.side_to_move());
+            let our_pieces = pos.board().colors(pos.board().side_to_move());
             let sliding_pieces =
-                board.pieces(Piece::Rook) |
-                board.pieces(Piece::Bishop) |
-                board.pieces(Piece::Queen);
+                pos.board().pieces(Piece::Rook) |
+                pos.board().pieces(Piece::Bishop) |
+                pos.board().pieces(Piece::Queen);
 
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
@@ -196,7 +197,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             let do_nmp = static_eval >= window.beta
                 && !(our_pieces & sliding_pieces).is_empty();
             if node != Node::Root && do_nmp {
-                if let Some(child) = board.null_move() {
+                if let Some(child) = pos.null_move() {
                     let mut window = window.null_window_beta();
                     let reduction = self.shared.search_params.nmp.reduction(static_eval, window);
                     let eval = -self.search_node(
@@ -216,7 +217,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
             let mut moves = MoveList::new(
-                board,
+                pos.board(),
                 pv_move,
                 self.data.killers[ply_index as usize].clone()
             );
@@ -242,10 +243,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         continue;
                     }
                 }
-                let mut child = board.clone();
-                child.play_unchecked(mv);
-                let gives_check = !child.checkers().is_empty();
-                let quiet = move_is_quiet(mv, &board);
+                let child = pos.play_unchecked(mv);
+                let gives_check = !child.board().checkers().is_empty();
+                let quiet = move_is_quiet(mv, pos.board());
 
                 if best_move.is_some() && futile && quiet && !in_check && !gives_check {
                     continue;
@@ -265,7 +265,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
                 if depth >= self.shared.search_params.lmr.min_depth && quiet && !in_check && !gives_check {
-                    let history = self.data.history_table.get(board, mv);
+                    let history = self.data.history_table.get(pos.board(), mv);
                     reduction += self.shared.search_params.lmr.reduction(i, depth, history);
                 }
                 let mut eval = -self.search_node(
@@ -294,7 +294,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
                 window.narrow_alpha(eval);
                 if window.empty() {
-                    if move_is_quiet(mv, &board) {
+                    if move_is_quiet(mv, pos.board()) {
                         // CITE: Killer moves.
                         // https://www.chessprogramming.org/Killer_Heuristic
                         let killers = &mut self.data.killers[ply_index as usize];
@@ -304,13 +304,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         killers.push(mv);
                         // CITE: History heuristic.
                         // https://www.chessprogramming.org/History_Heuristic
-                        self.data.history_table.update(board, mv, depth, true);
+                        self.data.history_table.update(pos.board(), mv, depth, true);
                     }
                     // CITE: We additionally punish the history of quiet moves that don't produce cutoffs.
                     // Suggested by the Black Marlin author and additionally observed in MadChess.
                     for &(prev_mv, _) in moves.yielded() {
-                        if prev_mv != mv && move_is_quiet(prev_mv, &board) {
-                            self.data.history_table.update(board, prev_mv, depth, false);
+                        if prev_mv != mv && move_is_quiet(prev_mv, &pos.board()) {
+                            self.data.history_table.update(pos.board(), prev_mv, depth, false);
                         }
                     }
                     break;
@@ -318,7 +318,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
             let best_move = best_move.unwrap();
 
-            self.shared.cache_table.set(&board, ply_index, TableEntry {
+            self.shared.cache_table.set(pos.board(), ply_index, TableEntry {
                 kind: match best_eval {
                     // No move was capable of raising alpha.
                     // The actual value might be worse than this.
@@ -348,7 +348,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
     // https://www.chessprogramming.org/Quiescence_Search
     fn quiescence(
         &mut self,
-        board: &Board,
+        pos: &Position,
         ply_index: u8,
         mut window: Window
     ) -> Eval {
@@ -356,16 +356,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
         let result = (|| {
             self.stats.nodes += 1;
 
-            match board.status() {
+            match pos.board().status() {
                 GameStatus::Won => return Eval::mated_in(ply_index),
                 GameStatus::Drawn => return Eval::DRAW,
                 GameStatus::Ongoing => {}
             }
-            if let Some(eval) = oracle::oracle(board) {
+            if let Some(eval) = oracle::oracle(pos.board()) {
                 return eval;
             }
 
-            if let Some(entry) = self.shared.cache_table.get(board, ply_index) {
+            if let Some(entry) = self.shared.cache_table.get(pos.board(), ply_index) {
                 match entry.kind {
                     TableEntryKind::Exact => return entry.eval,
                     TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
@@ -376,16 +376,15 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let mut best_eval = evaluate(board);
+            let mut best_eval = pos.evaluate();
             window.narrow_alpha(best_eval);
             if window.empty() {
                 return best_eval;
             }
 
-            let mut move_list = QSearchMoveList::new(board);
+            let mut move_list = QSearchMoveList::new(pos.board());
             while let Some((_, (mv, _))) = move_list.pick() {
-                let mut child = board.clone();
-                child.play_unchecked(mv);
+                let child = pos.play_unchecked(mv);
                 let eval = -self.quiescence(
                     &child,
                     ply_index + 1,

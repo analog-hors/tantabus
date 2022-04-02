@@ -32,20 +32,29 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Killer moves
     - History heuristic
 ### Evaluation
-- [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://drive.google.com/file/d/1GfrNuDfD9Le-ZKKLxTHu0i3z6fbTn8JJ/view?usp=sharing)
-- King relative symmetric piece-square tables
-    - Dedicated passed pawn tables
-- Mobility evaluation (simple pseudo-legal counting)
-- Bishop pair bonus
-- Rook on open file bonus
-- Rook on semiopen file bonus
-- Basic king safety using "virtual queen mobility" and attacked squares around the king
-- Tapered/phased evaluation (using Fruit-like method)
+- HCE
+    - No longer exists, used to train NNUE
+    - [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://drive.google.com/file/d/1GfrNuDfD9Le-ZKKLxTHu0i3z6fbTn8JJ/view?usp=sharing)
+    - King relative symmetric piece-square tables
+        - Dedicated passed pawn tables
+    - Mobility evaluation (simple pseudo-legal counting)
+    - Bishop pair bonus
+    - Rook on open file bonus
+    - Rook on semiopen file bonus
+    - Basic king safety using "virtual queen mobility" and attacked squares around the king
+    - Tapered/phased evaluation (using Fruit-like method)
+- NNUE
+    - Simple 768 -> 32x2 -> 1 network trained with a simple PyTorch trainer
+    - Two halves ordered by side to move and side not to move
 ### Time management
 - Uses a fixed percentage of time left
 - Aborts if it is estimated that the next iteration cannot be completed in time.
 
 ## Thanks
+A (potentially incomplete) list of very useful resources:
+- [The CPW wiki](https://www.chessprogramming.org/) - Extremely useful site for chess programming
+- [the NNUE document](https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md) - Extremely useful for NNUE
+
 Many engines have been very useful resources in the development of Tantabus.<br>
 A (potentially incomplete) list of citations is listed in the code, annotated with `// CITE` comments.<br>
 A (potentially incomplete) list of special thanks in no particular order:

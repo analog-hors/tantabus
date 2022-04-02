@@ -1,13 +1,11 @@
 [package]
-name = "tantabus-uci"
+name = "tantabus-fen-to-data"
 version = "0.1.0"
 edition = "2021"
-default-run = "tantabus-uci"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indexmap = "1"
-tantabus = { path = "../engine" }
 cozy-chess = "0.2.0"
-vampirc-uci = { version = "0.11" }
+tantabus = { path = "../engine" }
+rayon = "1.5.1"

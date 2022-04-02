@@ -10,3 +10,5 @@ cozy-chess = "0.2.0"
 arrayvec = "0.7.2"
 serde = { version = "1.0", features = ["derive"] }
 pdqsort = "1.0.3"
+num-traits = "0.2"
+bytemuck = "1.8.0"
