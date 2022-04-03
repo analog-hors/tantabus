@@ -1,7 +1,7 @@
 use cozy_chess::*;
 use tantabus::search::*;
 
-const CACHE: usize = 16_000_000;
+const CACHE: usize = 1_000_000;
 
 struct Handler {
     nodes: u64,
