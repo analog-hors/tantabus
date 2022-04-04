@@ -8,4 +8,3 @@ edition = "2021"
 [dependencies]
 cozy-chess = "0.2.0"
 tantabus = { path = "../engine" }
-rayon = "1.5.1"

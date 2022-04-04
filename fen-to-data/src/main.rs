@@ -1,66 +1,72 @@
-use std::io::{stdin, stdout, Write, BufRead};
+use std::io::{stdin, stdout, Write, BufRead, BufWriter};
 use std::env::args;
+use std::str::FromStr;
+use std::sync::mpsc::sync_channel;
+use std::thread::spawn;
 use std::time::Instant;
-
-use rayon::prelude::*;
 
 use cozy_chess::*;
 use tantabus::nnue::feature;
 
 mod analyze;
 
-const SCALE: f32 = 115.0;
+use analyze::Analyzer;
 
-fn sigmoid(n: f32) -> f32 {
-    1.0 / (1.0 + (-n).exp())
+fn arg<T: FromStr>(n: usize, name: &str) -> T {
+    args()
+        .nth(n).unwrap_or_else(|| panic!("Expected {} (arg {})", name, n))
+        .parse().unwrap_or_else(|_| panic!("Invalid {} (arg {})", name, n))
 }
 
 fn main() {
-    let mut stdout = stdout();
-    let stdin = stdin();
-    let min_nodes = args().nth(1).expect("Expected min nodes").parse().expect("Invalid nodes");
-    let lines = stdin.lock().lines().map(Result::unwrap);
-    let mut boards = lines.map(|f| f.parse::<Board>().unwrap());
-    let mut written = 0;
-    loop {
-        let start = Instant::now();
-        let boards = (&mut boards).take(1024).collect::<Vec<_>>();
-        if boards.len() == 0 {
-            break;
+    let threads: u32 = arg(1, "threads");
+    let min_nodes = arg(2, "min nodes");
+    let min_depth = arg(3, "min depth");
+
+    let (output_send, output_recv) = sync_channel(threads as usize * 2);
+    for _ in 0..threads {
+        let mut analyzer = Analyzer::new(min_nodes, min_depth);
+        let output_send = output_send.clone();
+        spawn(move || loop {
+            let boards = read_boards();
+            if boards.is_empty() {
+                break;
+            }
+            let boards: Vec<_> = boards
+                .into_iter()
+                .filter_map(|b| analyzer.to_data(b))
+                .collect();
+            output_send.send(boards).unwrap();
+        });
+    }
+    drop(output_send);
+
+    let stdout = stdout();
+    let mut stdout = BufWriter::new(stdout.lock());
+    let mut total_written = 0;
+    let mut last_printed = Instant::now();
+    let mut written_since = 0;
+    for batch in output_recv {
+        total_written += batch.len();
+        written_since += batch.len();
+        for (board, win_rate) in batch {
+            write_features(&mut stdout, &board, win_rate);
         }
-        let boards = boards
-            .into_par_iter()
-            .filter_map(|board| to_data(board, min_nodes))
-            .collect::<Vec<_>>();
-        for (board, win_rate) in &boards {
-            write_features(&mut stdout, board, *win_rate);
+        let elapsed = last_printed.elapsed();
+        if elapsed.as_secs() >= 5 {
+            let speed = written_since as f32 / elapsed.as_secs_f32();
+            eprintln!("{} positions written at {} pos/s", total_written, speed.round());
+            last_printed = Instant::now();
+            written_since = 0;
         }
-        let elapsed = start.elapsed();
-        let speed = boards.len() as f32 / elapsed.as_secs_f32();
-        written += boards.len();
-        eprintln!("{} boards written at {} pos/sec", written, speed.round());
     }
 }
 
-fn to_data(board: Board, min_nodes: u64) -> Option<(Board, f32)> {
-    if board.status() != GameStatus::Ongoing {
-        return None;
-    }
-    let analysis = analyze::analyze(board.clone(), min_nodes);
-    let mut capture_squares = board.colors(!board.side_to_move());
-    if let Some(ep) = board.en_passant() {
-        let ep = Square::new(ep, Rank::Third.relative_to(!board.side_to_move()));
-        capture_squares |= ep.bitboard();
-    }
-    let is_quiet = board.checkers().is_empty()
-        && !capture_squares.has(analysis.mv.to)
-        && analysis.eval.as_cp().is_some();
-    if !is_quiet {
-        return None;
-    }
-    let eval = analysis.eval.as_cp().unwrap() as f32;
-    let win_rate = sigmoid(eval / SCALE);
-    Some((board, win_rate))
+fn read_boards() -> Vec<Board> {
+    let stdin = stdin();
+    let lines = stdin.lock().lines().map(Result::unwrap);
+    let mut boards = lines.map(|f| f.parse::<Board>().unwrap());
+    (&mut boards).take(1024).collect()
 }
 
 fn write_features(out: &mut impl Write, board: &Board, win_rate: f32) {
