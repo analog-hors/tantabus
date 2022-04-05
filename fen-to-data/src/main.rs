@@ -6,7 +6,25 @@ use std::thread::spawn;
 use std::time::Instant;
 
 use cozy_chess::*;
-use tantabus::nnue::feature;
+
+pub fn feature(perspective: Color, mut color: Color, piece: Piece, mut square: Square) -> usize {
+    if perspective == Color::Black {
+        square = square.flip_rank();
+        color = !color;
+    }
+    macro_rules! index {
+        ($([$index:expr; $count:expr])*) => {{
+            let mut index = 0;
+            $(index = index * $count + $index;)*
+            index
+        }}
+    }
+    index! {
+        [color as usize; Color::NUM]
+        [piece as usize; Piece::NUM]
+        [square as usize; Square::NUM]
+    }
+}
 
 mod analyze;
 
