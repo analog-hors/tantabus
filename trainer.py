@@ -37,7 +37,9 @@ class Nnue(nn.Module):
 
 MAX_FEATURES = 32
 FEATURES_STRUCT = Struct("<" + "H" * MAX_FEATURES)
-DATASET_ENTRY_SIZE = FEATURES_STRUCT.size * 2 + 1
+WIN_RATE_SIZE = 2
+MAX_WIN_RATE = 65535
+DATASET_ENTRY_SIZE = FEATURES_STRUCT.size * 2 + WIN_RATE_SIZE
 
 class PositionSet(Dataset):
     data: bytes
@@ -60,8 +62,10 @@ class PositionSet(Dataset):
         field_index += FEATURES_STRUCT.size
         sntm_features = decode_features(self.data, field_index)
         field_index += FEATURES_STRUCT.size
-        win_rate = torch.tensor([self.data[field_index] / 255])
-        field_index += 1
+        win_rate = self.data[field_index:field_index + WIN_RATE_SIZE]
+        win_rate = int.from_bytes(win_rate, "little")
+        win_rate = torch.tensor([win_rate / MAX_WIN_RATE])
+        field_index += WIN_RATE_SIZE
         return [stm_features, sntm_features], win_rate
 
     def __len__(self) -> int:

@@ -88,5 +88,5 @@ fn write_features(out: &mut impl Write, board: &Board, win_rate: f32) {
             out.write_all(&u16::MAX.to_le_bytes()).unwrap();
         }
     }
-    out.write_all(&[(win_rate * u8::MAX as f32).round() as u8]).unwrap();
+    out.write_all(&((win_rate * u16::MAX as f32).round() as u16).to_le_bytes()).unwrap();
 }
