@@ -71,19 +71,22 @@ impl Analyzer {
         if board.status() != GameStatus::Ongoing {
             return None;
         }
-        let analysis = self.analyze(board.clone());
-        let mut capture_squares = board.colors(!board.side_to_move());
-        if let Some(ep) = board.en_passant() {
-            let ep = Square::new(ep, Rank::Third.relative_to(!board.side_to_move()));
-            capture_squares |= ep.bitboard();
-        }
-        let is_quiet = board.checkers().is_empty()
-            && !capture_squares.has(analysis.mv.to)
-            && analysis.eval.as_cp().is_some();
-        if !is_quiet {
+        if !board.checkers().is_empty() {
             return None;
         }
-        let eval = analysis.eval.as_cp().unwrap() as f32;
+        let analysis = self.analyze(board.clone());
+        let capture_squares = board.colors(!board.side_to_move());
+        let mut is_capture = capture_squares.has(analysis.mv.to);
+        if let Some(ep) = board.en_passant() {
+            let ep = Square::new(ep, Rank::Third.relative_to(!board.side_to_move()));
+            if board.pieces(Piece::Pawn).has(analysis.mv.from) && analysis.mv.to == ep {
+                is_capture = true;
+            }
+        }
+        if is_capture {
+            return None;
+        }
+        let eval = analysis.eval.as_cp()? as f32;
         let win_rate = sigmoid(eval / SCALE);
         Some((board, win_rate))
     }
