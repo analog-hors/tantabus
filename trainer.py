@@ -1,7 +1,7 @@
-from typing import List, OrderedDict, Tuple, Dict
+from typing import Iterator, List, OrderedDict, Tuple, Dict
 import os, torch, time, numpy as np
 from torch import Tensor, nn, optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import IterableDataset, DataLoader
 from dataclasses import dataclass
 from argparse import ArgumentParser
 from struct import Struct
@@ -41,35 +41,42 @@ WIN_RATE_SIZE = 2
 MAX_WIN_RATE = 65535
 DATASET_ENTRY_SIZE = FEATURES_STRUCT.size * 2 + WIN_RATE_SIZE
 
-class PositionSet(Dataset):
-    data: bytes
+class PositionSet(IterableDataset):
+    path: str
+    len: int
 
     def __init__(self, path: str):
-        with open(path, "rb") as f:
-            self.data = f.read()
+        self.path = path
+        with open(self.path, "rb") as file:
+            file.seek(0, os.SEEK_END)
+            self.len = file.tell() // DATASET_ENTRY_SIZE
 
-    def __getitem__(self, index: int) -> Tuple[List[Tensor], Tensor]:
-        def decode_features(data: bytes, index: int) -> Tensor:
-            raw = FEATURES_STRUCT.unpack_from(data, index)
-            features = np.zeros(FEATURES, dtype=np.float32)
-            for feature in raw:
-                if feature == 65535:
-                    break
-                features[feature] = 1
-            return torch.as_tensor(features)
-        field_index = index * DATASET_ENTRY_SIZE
-        stm_features = decode_features(self.data, field_index)
-        field_index += FEATURES_STRUCT.size
-        sntm_features = decode_features(self.data, field_index)
-        field_index += FEATURES_STRUCT.size
-        win_rate = self.data[field_index:field_index + WIN_RATE_SIZE]
-        win_rate = int.from_bytes(win_rate, "little")
-        win_rate = torch.tensor([win_rate / MAX_WIN_RATE])
-        field_index += WIN_RATE_SIZE
-        return [stm_features, sntm_features], win_rate
+    def __iter__(self) -> Iterator[Tuple[List[Tensor], Tensor]]:
+        def decode_entry(data: bytes):
+            def decode_features(data: bytes, index: int) -> Tensor:
+                raw = FEATURES_STRUCT.unpack_from(data, index)
+                features = np.zeros(FEATURES, dtype=np.float32)
+                for feature in raw:
+                    if feature == 65535:
+                        break
+                    features[feature] = 1
+                return torch.as_tensor(features)
+            index = 0
+            stm_features = decode_features(data, index)
+            index += FEATURES_STRUCT.size
+            sntm_features = decode_features(data, index)
+            index += FEATURES_STRUCT.size
+            win_rate = data[index:index + WIN_RATE_SIZE]
+            win_rate = int.from_bytes(win_rate, "little")
+            win_rate = torch.tensor([win_rate / MAX_WIN_RATE])
+            index += WIN_RATE_SIZE
+            return [stm_features, sntm_features], win_rate
+        with open(self.path, "rb", DATASET_ENTRY_SIZE * 1000) as file:
+            for _ in range(len(self)):
+                yield decode_entry(file.read(DATASET_ENTRY_SIZE))
 
     def __len__(self) -> int:
-        return len(self.data) // DATASET_ENTRY_SIZE
+        return self.len
 
 @dataclass
 class Checkpoint:
@@ -146,7 +153,7 @@ class Trainer:
         self.checkpoint_dir = checkpoint_dir
         self.state = state
         self.dataset = dataset
-        self.dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+        self.dataloader = DataLoader(dataset, batch_size=32)
         self.criterion = nn.MSELoss()
 
     def train(self):
