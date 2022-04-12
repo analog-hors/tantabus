@@ -12,7 +12,7 @@ const L1_OUT: usize = 1;
 
 const ACTIVATION_RANGE: i8 = 127;
 const WEIGHT_SCALE: i8 = 64;
-const OUTPUT_SCALE: i32 = 115;
+const OUTPUT_SCALE: i32 = 110;
 
 #[derive(Debug, Clone)]
 pub struct Nnue {
