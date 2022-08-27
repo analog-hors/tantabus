@@ -42,8 +42,6 @@ impl Display for EvalKind {
     }
 }
 
-
-
 impl Eval {
     pub const ZERO: Self = Self(0);
 
@@ -91,6 +89,14 @@ impl Eval {
         } else {
             None
         }
+    }
+
+    pub const fn to_bytes(self) -> [u8; 2] {
+        self.0.to_le_bytes()
+    }
+
+    pub const fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self(i16::from_le_bytes(bytes))
     }
 }
 
