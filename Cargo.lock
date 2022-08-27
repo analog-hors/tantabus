@@ -483,7 +483,9 @@ name = "tantabus"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "bytemuck",
  "cozy-chess",
+ "num-traits",
  "pdqsort",
  "serde",
 ]

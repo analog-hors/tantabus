@@ -124,4 +124,9 @@ impl CacheTable {
     pub fn len(&self) -> u32 {
         self.len
     }
+
+    pub fn clear(&mut self) {
+        self.table.fill(None);
+        self.len = 0;
+    }
 }
