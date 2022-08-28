@@ -44,7 +44,9 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Basic king safety using "virtual queen mobility" and attacked squares around the king
     - Tapered/phased evaluation (using Fruit-like method)
 - NNUE
-    - Simple 768 -> 32x2 -> 1 network trained with a simple PyTorch trainer
+    - Simple 768 -> 32x2 -> 1 network architecture
+    - Data generated using custom program
+    - Network trained using [MarlinFlow](https://github.com/dsekercioglu/marlinflow)
     - Two halves ordered by side to move and side not to move
 ### Time management
 - Uses a fixed percentage of time left
