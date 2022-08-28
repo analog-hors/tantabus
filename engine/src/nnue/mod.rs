@@ -40,23 +40,16 @@ pub struct NnueState<'m> {
     accumulator: [[i16; FT_OUT]; Color::NUM]
 }
 
-pub fn feature(perspective: Color, mut color: Color, piece: Piece, mut square: Square) -> usize {
-    if perspective == Color::Black {
-        square = square.flip_rank();
-        color = !color;
-    }
-    macro_rules! index {
-        ($([$index:expr; $count:expr])*) => {{
-            let mut index = 0;
-            $(index = index * $count + $index;)*
-            index
-        }}
-    }
-    index! {
-        [color as usize; Color::NUM]
-        [piece as usize; Piece::NUM]
-        [square as usize; Square::NUM]
-    }
+pub fn feature(perspective: Color, color: Color, piece: Piece, square: Square) -> usize {
+    let (square, color) = match perspective {
+        Color::White => (square, color),
+        Color::Black => (square.flip_rank(), !color),
+    };
+    let mut index = 0;
+    index = index * Color::NUM + color as usize;
+    index = index * Piece::NUM + piece as usize;
+    index = index * Square::NUM + square as usize;
+    index
 }
 
 impl<'s> NnueState<'s> {
