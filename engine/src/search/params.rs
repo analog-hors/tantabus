@@ -31,21 +31,21 @@ define_params! {
         min_depth: u8 = 3;
         bonus_reduction_index: usize = 3;
         bonus_reduction_min_depth: u8 = 7;
-        history_reduction_div: i32 = 200;
+        history_reduction_div: i32 = 215;
     }
     nmp = NmpParams {
         base_reduction: u8 = 3;
-        margin_div: i32 = 100;
+        margin_div: i32 = 114;
         margin_max_reduction: u8 = 2;
     }
     lmp = LmpParams {
-        quiets_to_check: [usize; 3] = [5, 10, 15];
+        quiets_to_check: [usize; 3] = [8, 9, 16];
     }
     fp = FpParams {
-        margins: [i16; 2] = [300, 600];
+        margins: [i16; 2] = [293, 612];
     }
     rfp = RfpParams {
-        base_margin: i16 = 80;
+        base_margin: i16 = 53;
         max_depth: u8 = 4;
     }
 }
