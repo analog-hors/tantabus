@@ -5,11 +5,11 @@ use crate::eval::*;
 
 fn piece_value(piece: Piece) -> Eval {
     Eval::cp(match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
+        Piece::Pawn => 94,
+        Piece::Knight => 312,
+        Piece::Bishop => 341,
+        Piece::Rook => 499,
+        Piece::Queen => 913,
         Piece::King => 0,
     })
 }
