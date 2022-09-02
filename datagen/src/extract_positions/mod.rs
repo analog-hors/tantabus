@@ -68,7 +68,7 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
         let mut samples = Vec::new();
         let mut board = init_pos.clone();
         for (i, &mv) in game.moves.iter().enumerate() {
-            let piece_count_before_move = board.occupied().popcnt();
+            let piece_count_before_move = board.occupied().len();
             board.play_unchecked(mv);
             if i < game.opening_moves as usize {
                 continue;
@@ -78,7 +78,7 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
                 None => continue,
             };
 
-            let is_capture = board.occupied().popcnt() < piece_count_before_move;
+            let is_capture = board.occupied().len() < piece_count_before_move;
             if config.exclude_captures && is_capture {
                 continue;
             }

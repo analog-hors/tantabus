@@ -64,10 +64,10 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
 
         //Try to fetch a new attacker
         for &new_attacker in &Piece::ALL {
-            let mut attackers = attackers &
+            let attackers = attackers &
                 board.pieces(new_attacker) &
                 board.colors(color);
-            if let Some(sq) = attackers.next() {
+            if let Some(sq) = attackers.next_square() {
                 if victim == Piece::King {
                     //Oops! Our last capture with our king was illegal since this piece is defended.
                     captures.pop();

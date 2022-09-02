@@ -9,5 +9,5 @@ default-run = "tantabus-uci"
 [dependencies]
 indexmap = "1"
 tantabus = { path = "../engine" }
-cozy-chess = "0.2.0"
+cozy-chess = "0.3.0"
 vampirc-uci = { version = "0.11" }

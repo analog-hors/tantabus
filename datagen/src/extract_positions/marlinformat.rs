@@ -7,7 +7,7 @@ const NO_SQUARE: u8 = Square::NUM as u8;
 
 fn square_index(bitboard: BitBoard, square: Square) -> usize {
     let squares_behind = BitBoard(square.bitboard().0 - 1);
-    (bitboard & squares_behind).popcnt() as usize
+    (bitboard & squares_behind).len() as usize
 }
 
 pub fn write_as_marlinformat(out: &mut impl Write, board: &Board, cp: i16, winner: Option<Color>) -> std::io::Result<()> {
