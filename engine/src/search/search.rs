@@ -76,7 +76,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         data: &mut SearchData,
         pos: &Position,
         depth: u8,
-        window: Window
+        prev_eval: Option<Eval>
     ) -> Result<SearcherResult, ()> {
         let mut searcher = Searcher {
             handler,
@@ -85,13 +85,31 @@ impl<H: SearchHandler> Searcher<'_, H> {
             search_result: None,
             stats: SearchStats::default(),
         };
-        let eval = searcher.search_node(
-            Node::Root,
-            pos,
-            depth,
-            0,
-            window
-        )?;
+
+        let mut windows = [75].iter().copied().map(Eval::cp);
+        let eval = loop {
+            // CITE: Aspiration window.
+            // https://www.chessprogramming.org/Aspiration_Windows
+            let mut aspiration_window = Window::INFINITY;
+            if depth > 3 {
+                if let Some(prev_eval) = prev_eval {
+                    if let Some(bounds) = windows.next() {
+                        aspiration_window = Window::around(prev_eval, bounds);
+                    }
+                }
+            }
+            let eval = searcher.search_node(
+                Node::Root,
+                pos,
+                depth,
+                0,
+                aspiration_window
+            )?;
+            if aspiration_window.contains(eval) {
+                break eval;
+            }
+        };
+
         Ok(SearcherResult {
             mv: searcher.search_result.unwrap(),
             eval,
