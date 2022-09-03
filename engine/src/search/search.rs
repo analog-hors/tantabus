@@ -151,9 +151,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 pv_move = Some(entry.best_move);
                 if !matches!(node, Node::Root | Node::Pv) && entry.depth >= depth {
                     match entry.kind {
-                        TableEntryKind::Exact => return Ok(entry.eval),
-                        TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
-                        TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
+                        CacheDataKind::Exact => return Ok(entry.eval),
+                        CacheDataKind::LowerBound => window.narrow_alpha(entry.eval),
+                        CacheDataKind::UpperBound => window.narrow_beta(entry.eval),
                     }
                     if window.empty() {
                         return Ok(entry.eval);
@@ -319,16 +319,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
             }
             let best_move = best_move.unwrap();
 
-            self.shared.cache_table.set(pos.board(), ply_index, TableEntry {
+            self.shared.cache_table.set(pos.board(), ply_index, CacheData {
                 kind: match best_eval {
                     // No move was capable of raising alpha.
                     // The actual value might be worse than this.
-                    _ if best_eval <= init_window.alpha => TableEntryKind::UpperBound,
+                    _ if best_eval <= init_window.alpha => CacheDataKind::UpperBound,
                     // The move was too good and this is a cut node.
                     // The value might be even better if it were not cut off.
-                    _ if best_eval >= window.beta => TableEntryKind::LowerBound,
+                    _ if best_eval >= window.beta => CacheDataKind::LowerBound,
                     // It's in the window. This is an exact value.
-                    _ => TableEntryKind::Exact
+                    _ => CacheDataKind::Exact
                 },
                 eval: best_eval,
                 depth,
@@ -368,9 +368,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             if let Some(entry) = self.shared.cache_table.get(pos.board(), ply_index) {
                 match entry.kind {
-                    TableEntryKind::Exact => return entry.eval,
-                    TableEntryKind::LowerBound => window.narrow_alpha(entry.eval),
-                    TableEntryKind::UpperBound => window.narrow_beta(entry.eval),
+                    CacheDataKind::Exact => return entry.eval,
+                    CacheDataKind::LowerBound => window.narrow_alpha(entry.eval),
+                    CacheDataKind::UpperBound => window.narrow_beta(entry.eval),
                 }
                 if window.empty() {
                     return entry.eval;
