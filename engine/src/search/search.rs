@@ -24,8 +24,8 @@ pub struct SearcherResult {
     pub stats: SearchStats
 }
 
-pub struct SearchSharedState<H> {
-    pub handler: H,
+/// Represents shared data required by all search threads.
+pub struct SearchSharedState {
     pub history: Vec<u64>,
     pub cache_table: CacheTable,
     pub search_params: SearchParams
@@ -34,6 +34,8 @@ pub struct SearchSharedState<H> {
 pub const KILLER_ENTRIES: usize = 2;
 pub(crate) type KillerEntry = ArrayVec<Move, KILLER_ENTRIES>;
 
+/// Represents the local data required to start one search.
+/// This struct is also reused between iterations.
 pub struct SearchData {
     pub game_history: Vec<u64>,
     pub killers: [KillerEntry; u8::MAX as usize],
@@ -49,19 +51,39 @@ impl SearchData {
             history_table: HistoryTable::new()
         }
     }
+}
 
-    pub fn search<H: SearchHandler>(
-        &mut self,
-        shared: &mut SearchSharedState<H>,
+/// Represents a single search at some point in time.
+pub struct Searcher<'s, H> {
+    handler: &'s mut H,
+    shared: &'s SearchSharedState,
+    pub data: &'s mut SearchData,
+    search_result: Option<Move>,
+    stats: SearchStats
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Node {
+    Root,
+    Pv,
+    Normal
+}
+
+impl<H: SearchHandler> Searcher<'_, H> {
+    pub fn search(
+        handler: &mut H,
+        shared: &SearchSharedState,
+        data: &mut SearchData,
         pos: &Position,
         depth: u8,
         window: Window
     ) -> Result<SearcherResult, ()> {
         let mut searcher = Searcher {
+            handler,
             shared,
-            data: self,
+            data,
             search_result: None,
-            stats: SearchStats::default()
+            stats: SearchStats::default(),
         };
         let eval = searcher.search_node(
             Node::Root,
@@ -76,26 +98,10 @@ impl SearchData {
             stats: searcher.stats
         })
     }
-}
 
-pub struct Searcher<'s, H> {
-    pub shared: &'s mut SearchSharedState<H>,
-    pub data: &'s mut SearchData,
-    pub search_result: Option<Move>,
-    pub stats: SearchStats
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Node {
-    Root,
-    Pv,
-    Normal
-}
-
-impl<H: SearchHandler> Searcher<'_, H> {
     // CITE: The base of this engine is built on principal variation search.
     // https://www.chessprogramming.org/Principal_Variation_Search
-    pub fn search_node(
+    fn search_node(
         &mut self,
         node: Node,
         pos: &Position,
@@ -127,7 +133,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let init_window = window;
 
-            if self.shared.handler.stop_search() {
+            if self.handler.stop_search() {
                 return Err(());
             }
 

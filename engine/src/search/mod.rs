@@ -1,5 +1,5 @@
 use std::convert::TryInto;
-use std::num::NonZeroU8;
+use std::num::{NonZeroU8, NonZeroU32};
 
 use cozy_chess::*;
 
@@ -50,20 +50,23 @@ pub struct SearchResult {
 
 #[derive(Debug, Clone)]
 pub struct EngineOptions {
-    pub max_depth: NonZeroU8
+    pub max_depth: NonZeroU8,
+    pub threads: NonZeroU32
 }
 
 impl Default for EngineOptions {
     fn default() -> Self {
         Self {
-            max_depth: 64.try_into().unwrap()
+            max_depth: 64.try_into().unwrap(),
+            threads: 1.try_into().unwrap(),
         }
     }
 }
 
 pub struct Engine<H> {
     pos: Position<'static>,
-    shared: SearchSharedState<H>,
+    main_handler: H,
+    shared: SearchSharedState,
     options: EngineOptions
 }
 
@@ -85,8 +88,8 @@ impl<H: SearchHandler> Engine<H> {
 
         Self {
             pos: Position::new(&Nnue::DEFAULT, board),
+            main_handler: handler,
             shared: SearchSharedState {
-                handler,
                 history,
                 cache_table,
                 search_params
@@ -98,7 +101,10 @@ impl<H: SearchHandler> Engine<H> {
     pub fn search(&mut self) {
         let mut prev_eval = None;
 
-        let mut search_data = SearchData::new(self.shared.history.clone());
+        let mut search_data = (0..self.options.threads.get())
+            .map(|_| SearchData::new(self.shared.history.clone()))
+            .collect::<Vec<_>>();
+
         for depth in 1..=self.options.max_depth.get() {
             let mut windows = [75].iter().copied().map(Eval::cp);
             let result = loop {
@@ -112,8 +118,10 @@ impl<H: SearchHandler> Engine<H> {
                         }
                     }
                 }
-                let result = search_data.search(
-                    &mut self.shared,
+                let result = Searcher::search(
+                    &mut self.main_handler,
+                    &self.shared,
+                    &mut search_data[0],
                     &self.pos,
                     depth,
                     aspiration_window
@@ -126,39 +134,40 @@ impl<H: SearchHandler> Engine<H> {
                 break result;
             };
 
-            if let Ok(SearcherResult { mv, eval, stats }) = result {
-                prev_eval = Some(eval);
-                let mut principal_variation = Vec::new();
-                let mut history = self.shared.history.clone();
-                let mut board = self.pos.board().clone();
-                while let Some(entry) = self.shared.cache_table.get(&board, 0) {
-                    history.push(board.hash());
-                    board.play_unchecked(entry.best_move);
-                    principal_variation.push(entry.best_move);
-                    let repetitions = history.iter()
-                        .rev()
-                        .take(board.halfmove_clock() as usize + 1)
-                        .step_by(2) // Every second ply so it's our turn
-                        .skip(1)
-                        .filter(|&&hash| hash == board.hash())
-                        .count();
-                    if repetitions > 2 || board.status() != GameStatus::Ongoing {
-                        break;
-                    }
-                }
+            let SearcherResult { mv, eval, stats } = match result {
+                Ok(result) => result,
+                Err(_) => break
+            };
 
-                self.shared.handler.new_result(SearchResult {
-                    mv,
-                    eval,
-                    nodes: stats.nodes,
-                    depth,
-                    seldepth: stats.seldepth,
-                    cache_approx_size_permill: self.shared.cache_table.approx_size_permill(),
-                    principal_variation
-                });
-            } else {
-                break;
+            prev_eval = Some(eval);
+            let mut principal_variation = Vec::new();
+            let mut history = self.shared.history.clone();
+            let mut board = self.pos.board().clone();
+            while let Some(entry) = self.shared.cache_table.get(&board, 0) {
+                history.push(board.hash());
+                board.play_unchecked(entry.best_move);
+                principal_variation.push(entry.best_move);
+                let repetitions = history.iter()
+                    .rev()
+                    .take(board.halfmove_clock() as usize + 1)
+                    .step_by(2) // Every second ply so it's our turn
+                    .skip(1)
+                    .filter(|&&hash| hash == board.hash())
+                    .count();
+                if repetitions > 2 || board.status() != GameStatus::Ongoing {
+                    break;
+                }
             }
+
+            self.main_handler.new_result(SearchResult {
+                mv,
+                eval,
+                nodes: stats.nodes,
+                depth,
+                seldepth: stats.seldepth,
+                cache_approx_size_permill: self.shared.cache_table.approx_size_permill(),
+                principal_variation
+            });
         }
     }
 
