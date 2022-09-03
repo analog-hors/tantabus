@@ -66,6 +66,16 @@ impl CacheTable {
         ((hash as u32 as u64 * self.capacity() as u64) >> u32::BITS) as usize
     }
 
+    pub fn prefetch(&self, board: &Board) {
+        let index = self.hash_to_index(board.hash());
+        let entry = &self.table[index];
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+            _mm_prefetch(entry as *const _ as *const _, _MM_HINT_T0);
+        }
+    }
+    
     pub fn get(&self, board: &Board, ply_index: u8) -> Option<TableEntry> {
         let hash = board.hash();
         let index = self.hash_to_index(hash);
