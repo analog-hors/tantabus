@@ -244,6 +244,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 }
                 let child = pos.play_unchecked(mv);
+                self.shared.cache_table.prefetch(child.board());
                 let gives_check = !child.board().checkers().is_empty();
                 let quiet = move_is_quiet(mv, pos.board());
 
