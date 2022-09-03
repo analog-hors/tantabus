@@ -18,7 +18,6 @@ mod position;
 
 use search::*;
 pub use params::*;
-use window::Window;
 pub use cache::{CacheTable, CacheData};
 use position::Position;
 
@@ -106,34 +105,14 @@ impl<H: SearchHandler> Engine<H> {
             .collect::<Vec<_>>();
 
         for depth in 1..=self.options.max_depth.get() {
-            let mut windows = [75].iter().copied().map(Eval::cp);
-            let result = loop {
-                // CITE: Aspiration window.
-                // https://www.chessprogramming.org/Aspiration_Windows
-                let mut aspiration_window = Window::INFINITY;
-                if depth > 3 {
-                    if let Some(prev_eval) = prev_eval {
-                        if let Some(bounds) = windows.next() {
-                            aspiration_window = Window::around(prev_eval, bounds);
-                        }
-                    }
-                }
-                let result = Searcher::search(
-                    &mut self.main_handler,
-                    &self.shared,
-                    &mut search_data[0],
-                    &self.pos,
-                    depth,
-                    aspiration_window
-                );
-                if let Ok(result) = &result {
-                    if !aspiration_window.contains(result.eval) {
-                        continue;
-                    }
-                }
-                break result;
-            };
-
+            let result = Searcher::search(
+                &mut self.main_handler,
+                &self.shared,
+                &mut search_data[0],
+                &self.pos,
+                depth,
+                prev_eval
+            );
             let SearcherResult { mv, eval, stats } = match result {
                 Ok(result) => result,
                 Err(_) => break
