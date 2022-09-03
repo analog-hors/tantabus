@@ -20,8 +20,7 @@ pub struct SearchStats {
 #[derive(Debug, Clone)]
 pub struct SearcherResult {
     pub mv: Move,
-    pub eval: Eval,
-    pub stats: SearchStats
+    pub eval: Eval
 }
 
 /// Represents shared data required by all search threads.
@@ -77,7 +76,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         pos: &Position,
         depth: u8,
         window: Window
-    ) -> Result<SearcherResult, ()> {
+    ) -> (Result<SearcherResult, ()>, SearchStats) {
         let mut searcher = Searcher {
             handler,
             shared,
@@ -91,12 +90,12 @@ impl<H: SearchHandler> Searcher<'_, H> {
             depth,
             0,
             window
-        )?;
-        Ok(SearcherResult {
+        );
+        let result = eval.map(|eval| SearcherResult {
             mv: searcher.search_result.unwrap(),
-            eval,
-            stats: searcher.stats
-        })
+            eval
+        });
+        (result, searcher.stats)
     }
 
     // CITE: The base of this engine is built on principal variation search.

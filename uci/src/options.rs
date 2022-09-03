@@ -67,9 +67,9 @@ impl UciOptionsHandler {
                 name: "Threads".to_owned(),
                 default: Some(1),
                 min: Some(1),
-                max: Some(1)
-            } => |_, _| {
-                // Implementation of the "Laziest SMP" algorithm
+                max: Some(4096)
+            } => |options, value| {
+                options.engine_options.threads = value.parse().unwrap();
             }
         }
         macro_rules! add_search_param_handlers {
