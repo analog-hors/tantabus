@@ -314,10 +314,6 @@ fn main() {
             }
             Event::EngineSearchUpdate(result) => match result {
                 EngineSearchResult::SearchInfo(result, duration) => {
-                    let tt_filledness =
-                        result.used_cache_entries
-                        * 1000
-                        / result.total_cache_entries;
                     let (board, moves) = position.as_ref().unwrap();
                     let mut current_pos = board.clone();
                     for &mv in moves {
@@ -340,7 +336,7 @@ fn main() {
                         UciInfoAttribute::Nodes(result.nodes),
                         UciInfoAttribute::Pv(principal_variation),
                         UciInfoAttribute::Time(vampirc_uci::Duration::from_std(duration).unwrap()),
-                        UciInfoAttribute::HashFull(tt_filledness as u16)
+                        UciInfoAttribute::HashFull(result.cache_approx_size_permill as u16)
                     ]));
                 }
                 EngineSearchResult::SearchFinished(result, cache) => {
