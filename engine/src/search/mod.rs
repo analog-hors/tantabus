@@ -149,9 +149,9 @@ impl<H: SearchHandler> Engine<H> {
                     depth,
                     prev_eval
                 );
-                let result = result?;
-
                 terminate_workers.store(true, Ordering::Release);
+
+                let result = result?;
                 for handle in worker_handles {
                     let (_, worker_stats) = handle.join().unwrap();
                     stats.nodes += worker_stats.nodes;
