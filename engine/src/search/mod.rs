@@ -19,7 +19,7 @@ mod position;
 use search::*;
 pub use params::*;
 use window::Window;
-pub use cache::{CacheTable, TableEntry, TableKeyValueEntry};
+pub use cache::{CacheTable, CacheData};
 use position::Position;
 
 pub trait SearchHandler {
@@ -44,8 +44,7 @@ pub struct SearchResult {
     pub nodes: u64,
     pub depth: u8,
     pub seldepth: u8,
-    pub used_cache_entries: u32,
-    pub total_cache_entries: u32,
+    pub cache_approx_size_permill: u32,
     pub principal_variation: Vec<Move>
 }
 
@@ -154,8 +153,7 @@ impl<H: SearchHandler> Engine<H> {
                     nodes: stats.nodes,
                     depth,
                     seldepth: stats.seldepth,
-                    used_cache_entries: self.shared.cache_table.len(),
-                    total_cache_entries: self.shared.cache_table.capacity(),
+                    cache_approx_size_permill: self.shared.cache_table.approx_size_permill(),
                     principal_variation
                 });
             } else {
