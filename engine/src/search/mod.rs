@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::num::{NonZeroU8, NonZeroU32};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use cozy_chess::*;
 
@@ -45,6 +46,18 @@ pub struct SearchResult {
     pub seldepth: u8,
     pub cache_approx_size_permill: u32,
     pub principal_variation: Vec<Move>
+}
+
+struct WorkerHandler<'w> {
+    terminate: &'w AtomicBool
+}
+
+impl SearchHandler for WorkerHandler<'_> {
+    fn stop_search(&self) -> bool {
+        self.terminate.load(Ordering::Acquire)
+    }
+
+    fn new_result(&mut self, _result: SearchResult) {}
 }
 
 #[derive(Debug, Clone)]
@@ -105,15 +118,49 @@ impl<H: SearchHandler> Engine<H> {
             .collect::<Vec<_>>();
 
         for depth in 1..=self.options.max_depth.get() {
-            let result = Searcher::search(
-                &mut self.main_handler,
-                &self.shared,
-                &mut search_data[0],
-                &self.pos,
-                depth,
-                prev_eval
-            );
-            let SearcherResult { mv, eval, stats } = match result {
+            let terminate_workers = AtomicBool::new(false);
+            let result: Result<_, ()> = std::thread::scope(|scope| {
+                let (main_data, worker_data) = search_data.split_first_mut().unwrap();
+
+                let mut worker_handles = Vec::with_capacity(worker_data.len());
+                for search_data in worker_data {
+                    let mut handler = WorkerHandler {
+                        terminate: &terminate_workers
+                    };
+                    let shared = &self.shared;
+                    let pos = &self.pos;
+                    worker_handles.push(scope.spawn(move || {
+                        Searcher::search(
+                            &mut handler,
+                            shared,
+                            search_data,
+                            pos,
+                            depth,
+                            prev_eval
+                        )
+                    }));
+                }
+
+                let (result, mut stats) = Searcher::search(
+                    &mut self.main_handler,
+                    &self.shared,
+                    main_data,
+                    &self.pos,
+                    depth,
+                    prev_eval
+                );
+                terminate_workers.store(true, Ordering::Release);
+
+                let result = result?;
+                for handle in worker_handles {
+                    let (_, worker_stats) = handle.join().unwrap();
+                    stats.nodes += worker_stats.nodes;
+                    stats.seldepth = stats.seldepth.max(worker_stats.seldepth);
+                }
+
+                Ok((result, stats))
+            });
+            let (SearcherResult { mv, eval }, stats) = match result {
                 Ok(result) => result,
                 Err(_) => break
             };
