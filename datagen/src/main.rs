@@ -6,9 +6,11 @@ use clap::{Parser, Subcommand};
 mod analyzed_game;
 mod game_gen;
 mod extract_positions;
+mod apply_syzygy;
 
 use extract_positions::{ExtractPositionsConfig, run_position_extraction};
 use game_gen::{GameGenRunnerConfig, run_game_gen};
+use apply_syzygy::{ApplySyzygyConfig, run_apply_syzygy};
 
 #[derive(Parser)]
 /// Generate and process analyzed Tantabus games. 
@@ -20,7 +22,8 @@ struct DatagenCommand {
 #[derive(Subcommand)]
 enum DatagenSubcommand {
     GenGames(GameGenRunnerConfig),
-    ExtractPos(ExtractPositionsConfig)
+    ExtractPos(ExtractPositionsConfig),
+    ApplySyzygy(ApplySyzygyConfig)
 }
 
 fn main() {
@@ -35,6 +38,7 @@ fn main() {
 
     match DatagenCommand::parse().subcommand {
         DatagenSubcommand::GenGames(config) => run_game_gen(&config, &abort),
-        DatagenSubcommand::ExtractPos(config) => run_position_extraction(&config, &abort)
+        DatagenSubcommand::ExtractPos(config) => run_position_extraction(&config, &abort),
+        DatagenSubcommand::ApplySyzygy(config) => run_apply_syzygy(&config, &abort)
     }
 }

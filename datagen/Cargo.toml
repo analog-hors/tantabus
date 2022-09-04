@@ -9,6 +9,7 @@ edition = "2021"
 tantabus = { path = "../engine" }
 bytemuck = { version = "1.10.0", features = ["derive"] }
 cozy-chess = "0.3.0"
+cozy-syzygy = { git = "https://github.com/MinusKelvin/cozy-syzygy", rev = "57ed31e" }
 rand = "0.8.5"
 rand_pcg = "0.3.1"
 clap = { version = "3.2.17", features = ["derive"] }

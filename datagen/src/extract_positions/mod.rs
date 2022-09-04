@@ -66,10 +66,12 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
     let mut rng = Pcg64Mcg::new(0xcafef00dd15ea5e5);
     while let Some(game) = read_analyzed_game(&mut in_file).unwrap() {
         let mut samples = Vec::new();
-        let mut board = init_pos.clone();
+        // TODO better name
+        let mut next_board = init_pos.clone();
         for (i, &mv) in game.moves.iter().enumerate() {
-            let piece_count_before_move = board.occupied().len();
-            board.play_unchecked(mv);
+            let board = next_board.clone();
+            next_board.play_unchecked(mv);
+
             if i < game.opening_moves as usize {
                 continue;
             }
@@ -78,12 +80,12 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
                 None => continue,
             };
 
-            let is_capture = board.occupied().len() < piece_count_before_move;
+            let is_capture = next_board.occupied().len() < board.occupied().len();
             if config.exclude_captures && is_capture {
                 continue;
             }
 
-            let has_checkers = !board.checkers().is_empty();
+            let has_checkers = !board.checkers().is_empty() || !next_board.checkers().is_empty();
             if config.exclude_checkers && has_checkers {
                 continue;
             }
@@ -92,7 +94,7 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
                 continue;
             }
 
-            samples.push((board.clone(), cp));
+            samples.push((board, cp));
         }
 
         // Partially shuffle into starting elements
