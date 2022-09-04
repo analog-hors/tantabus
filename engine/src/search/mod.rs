@@ -118,6 +118,8 @@ impl<H: SearchHandler> Engine<H> {
             .collect::<Vec<_>>();
 
         for depth in 1..=self.options.max_depth.get() {
+            // CITE: Lazy SMP.
+            // https://www.chessprogramming.org/Lazy_SMP
             let terminate_workers = AtomicBool::new(false);
             let result: Result<_, ()> = std::thread::scope(|scope| {
                 let (main_data, worker_data) = search_data.split_first_mut().unwrap();

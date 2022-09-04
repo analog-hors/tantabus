@@ -31,6 +31,10 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Static exchange evaluation
     - Killer moves
     - History heuristic
+- Lazy SMP
+    - Extremely simple implementation where the TT is shared among N search threads
+    - Lockless transposition table implemented using relaxed atomics and the [XOR trick](https://web.archive.org/web/20201106232343/https://www.craftychess.com/hyatt/hashing.html)
+    - 4 threads measured as approximately 148 Elo stronger than 1 thread in 10,000 games
 ### Evaluation
 - HCE
     - No longer exists, used to train NNUE
