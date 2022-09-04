@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cozy-chess = "0.3.0"
+cozy-chess = { version = "0.3.0", features = ["pext"] }
 arrayvec = "0.7.2"
 serde = { version = "1.0", features = ["derive"] }
 pdqsort = "1.0.3"
