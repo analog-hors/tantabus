@@ -221,12 +221,12 @@ impl QSearchMoveList {
             capture_moves.to &= their_pieces;
             for mv in capture_moves {
                 // CITE: This use of SEE in quiescence and pruning moves with
-                // negative SEE was implemented based on a chesspgoramming.org page.
+                // negative SEE was implemented based on a chessprogramming.org page.
                 // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
-                let eval = static_exchange_evaluation(board, mv);
-                if eval < Eval::ZERO {
+                if !static_exchange_evaluation_above::<0>(board, mv) {
                     continue;
                 }
+                let eval = static_exchange_evaluation(board, mv);
                 move_list.push((mv, MoveScore::Capture(eval)));
             }
             false
