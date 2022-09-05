@@ -10,7 +10,7 @@ fn piece_value(piece: Piece) -> Eval {
         Piece::Bishop => 330,
         Piece::Rook => 500,
         Piece::Queen => 900,
-        Piece::King => 0,
+        Piece::King => 20_000,
     })
 }
 
@@ -42,6 +42,10 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
         // "Capture" victim
         captures.push(piece_value(victim));
 
+        if victim == Piece::King {
+            break;
+        }
+
         // "Move" attacker to target square
         blockers ^= attacker_sq.bitboard();
         attackers ^= attacker_sq.bitboard();
@@ -65,12 +69,6 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
         for &new_attacker in &Piece::ALL {
             let attackers = attackers & board.colored_pieces(color, new_attacker);
             if let Some(sq) = attackers.next_square() {
-                if victim == Piece::King {
-                    // Oops! Our last capture with our king was illegal since this piece is defended.
-                    captures.pop();
-                    break;
-                }
-
                 // New attacker, the old attacker is now the victim
                 victim = attacker;
                 attacker = new_attacker;
@@ -79,18 +77,20 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
             }
         }
 
-        // No attacker could be found, calculate final result.
-        while captures.len() > 1 {
-            // First capture is forced, but all others can be ignored.
-            let forced = captures.len() == 2;
-            let their_gain = captures.pop().unwrap();
-            let our_gain = captures.last_mut().unwrap();
-            *our_gain -= their_gain;
-            if !forced && *our_gain < Eval::ZERO {
-                // Choose not to make the capture.
-                *our_gain = Eval::ZERO;
-            }
-        }
-        return captures.pop().unwrap();
+        break;
     }
+
+    // No attacker could be found, calculate final result.
+    while captures.len() > 1 {
+        // First capture is forced, but all others can be ignored.
+        let forced = captures.len() == 2;
+        let their_gain = captures.pop().unwrap();
+        let our_gain = captures.last_mut().unwrap();
+        *our_gain -= their_gain;
+        if !forced && *our_gain < Eval::ZERO {
+            // Choose not to make the capture.
+            *our_gain = Eval::ZERO;
+        }
+    }
+    captures.pop().unwrap()
 }
