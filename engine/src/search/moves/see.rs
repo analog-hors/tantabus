@@ -23,12 +23,6 @@ fn get_both_pawn_attacks(sq: Square) -> BitBoard {
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     use Piece::*;
 
-    macro_rules! pieces {
-        ($($piece:ident)|+) => {
-            ($(board.pieces(Piece::$piece))|*)
-        }
-    }
-
     let sq = capture.to;
     let mut attacker_sq = capture.from;
     let mut victim = board.piece_on(sq).unwrap();
