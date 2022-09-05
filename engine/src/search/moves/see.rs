@@ -14,12 +14,14 @@ fn piece_value(piece: Piece) -> Eval {
     })
 }
 
+fn get_both_pawn_attacks(sq: Square) -> BitBoard {
+    get_pawn_attacks(sq, Color::White) | get_pawn_attacks(sq, Color::Black)
+}
+
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
-    fn get_both_pawn_attacks(sq: Square) -> BitBoard {
-        get_pawn_attacks(sq, Color::White) | get_pawn_attacks(sq, Color::Black)
-    }
+    use Piece::*;
 
     macro_rules! pieces {
         ($($piece:ident)|+) => {
@@ -34,47 +36,48 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     let mut color = board.side_to_move();
     let mut blockers = board.occupied();
     let mut attackers =
-        get_king_moves(sq)                   & pieces!(King)           |
-        get_knight_moves(sq)                 & pieces!(Knight)         |
-        get_rook_moves(sq, blockers)         & pieces!(Rook | Queen)   |
-        get_bishop_moves(sq, blockers)       & pieces!(Bishop | Queen) |
-        get_both_pawn_attacks(sq) & blockers & pieces!(Pawn);
+        get_king_moves(sq)                   & board.pieces(King) |
+        get_knight_moves(sq)                 & board.pieces(Knight) |
+        get_rook_moves(sq, blockers)         & (board.pieces(Rook) | board.pieces(Queen)) |
+        get_bishop_moves(sq, blockers)       & (board.pieces(Bishop) | board.pieces(Queen)) |
+        get_both_pawn_attacks(sq) & blockers & board.pieces(Pawn);
 
-    //32 pieces max on a legal chess board.
-    let mut captures = ArrayVec::<Eval, 32>::new();
+    // 32 pieces max on a legal chess board.
+    let mut captures = ArrayVec::<_, 32>::new();
     'exchange: loop {
-        //"Capture" victim
+        // "Capture" victim
         captures.push(piece_value(victim));
 
-        //"Move" attacker to target square
-        let attacker_bitboard = attacker_sq.bitboard();
-        blockers ^= attacker_bitboard;
-        attackers ^= attacker_bitboard;
+        // "Move" attacker to target square
+        blockers ^= attacker_sq.bitboard();
+        attackers ^= attacker_sq.bitboard();
 
-        //Add new exposed sliding pieces
-        if matches!(attacker, Piece::Rook | Piece::Queen) {
-            attackers |= get_rook_moves(sq, blockers) & blockers & pieces!(Rook | Queen);
+        // Add new exposed sliding pieces
+        if matches!(attacker, Rook | Queen) {
+            attackers |= get_rook_moves(sq, blockers)
+                & blockers
+                & (board.pieces(Rook) | board.pieces(Queen));
         }
-        if matches!(attacker, Piece::Pawn | Piece::Bishop | Piece::Queen) {
-            attackers |= get_bishop_moves(sq, blockers) & blockers & pieces!(Bishop | Queen);
+        if matches!(attacker, Pawn | Bishop | Queen) {
+            attackers |= get_bishop_moves(sq, blockers)
+                & blockers
+                & (board.pieces(Bishop) | board.pieces(Queen));
         }
 
-        //Swap sides
+        // Swap sides
         color = !color;
 
-        //Try to fetch a new attacker
+        // Try to fetch a new attacker
         for &new_attacker in &Piece::ALL {
-            let attackers = attackers &
-                board.pieces(new_attacker) &
-                board.colors(color);
+            let attackers = attackers & board.colored_pieces(color, new_attacker);
             if let Some(sq) = attackers.next_square() {
                 if victim == Piece::King {
-                    //Oops! Our last capture with our king was illegal since this piece is defended.
+                    // Oops! Our last capture with our king was illegal since this piece is defended.
                     captures.pop();
                     break;
                 }
 
-                //New attacker, the old attacker is now the victim
+                // New attacker, the old attacker is now the victim
                 victim = attacker;
                 attacker = new_attacker;
                 attacker_sq = sq;
@@ -82,16 +85,16 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
             }
         }
 
-        //No attacker could be found, calculate final result.
+        // No attacker could be found, calculate final result.
         while captures.len() > 1 {
-            //First capture is forced, but all others can be ignored.
+            // First capture is forced, but all others can be ignored.
             let forced = captures.len() == 2;
-            let their_eval = captures.pop().unwrap();
-            let our_capture = captures.last_mut().unwrap();
-            *our_capture -= their_eval;
-            if !forced && *our_capture < Eval::ZERO {
-                //Choose not to make the capture.
-                *our_capture = Eval::ZERO;
+            let their_gain = captures.pop().unwrap();
+            let our_gain = captures.last_mut().unwrap();
+            *our_gain -= their_gain;
+            if !forced && *our_gain < Eval::ZERO {
+                // Choose not to make the capture.
+                *our_gain = Eval::ZERO;
             }
         }
         return captures.pop().unwrap();
