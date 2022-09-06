@@ -15,10 +15,6 @@ fn piece_value(piece: Piece) -> Eval {
     })
 }
 
-fn get_both_pawn_attacks(sq: Square) -> BitBoard {
-    get_pawn_attacks(sq, Color::White) | get_pawn_attacks(sq, Color::Black)
-}
-
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
@@ -31,11 +27,12 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     // Attacker moved to target square, so remove it
     let mut blockers = board.occupied() ^ capture.from.bitboard();
     let mut attackers =
-        get_king_moves(target_sq) & blockers             & board.pieces(King) |
-        get_knight_moves(target_sq) & blockers           & board.pieces(Knight) |
-        get_rook_moves(target_sq, blockers) & blockers   & (board.pieces(Rook) | board.pieces(Queen)) |
-        get_bishop_moves(target_sq, blockers) & blockers & (board.pieces(Bishop) | board.pieces(Queen)) |
-        get_both_pawn_attacks(target_sq) & blockers      & board.pieces(Pawn);
+        get_king_moves(target_sq) & blockers                 & board.pieces(King) |
+        get_knight_moves(target_sq) & blockers               & board.pieces(Knight) |
+        get_rook_moves(target_sq, blockers) & blockers       & (board.pieces(Rook) | board.pieces(Queen)) |
+        get_bishop_moves(target_sq, blockers) & blockers     & (board.pieces(Bishop) | board.pieces(Queen)) |
+        get_pawn_attacks(target_sq, Color::Black) & blockers & board.colored_pieces(Color::White, Pawn) |
+        get_pawn_attacks(target_sq, Color::White) & blockers & board.colored_pieces(Color::Black, Pawn);
 
     // Attacker moved to the target square
     let mut target_piece = board.piece_on(capture.from).unwrap();
