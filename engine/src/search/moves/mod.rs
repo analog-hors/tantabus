@@ -147,7 +147,10 @@ impl<'b> MoveList<'b> {
                         }
         
                         for mv in capture_moves {
-                            let eval = static_exchange_evaluation(self.data.board, mv);
+                            let see = static_exchange_evaluation(self.data.board, mv);
+                            let victim = self.data.board.piece_on(mv.to).unwrap();
+                            let attacker = moves.piece;
+                            let eval = see * Eval::cp(16) + Eval::cp(victim as i16 * 8 - attacker as i16);
                             if eval >= Eval::ZERO {
                                 captures.push((mv, MoveScore::Capture(eval)));
                             } else {
@@ -221,12 +224,15 @@ impl QSearchMoveList {
             capture_moves.to &= their_pieces;
             for mv in capture_moves {
                 // CITE: This use of SEE in quiescence and pruning moves with
-                // negative SEE was implemented based on a chesspgoramming.org page.
+                // negative SEE was implemented based on a chessprogramming.org page.
                 // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
-                let eval = static_exchange_evaluation(board, mv);
-                if eval < Eval::ZERO {
+                let see = static_exchange_evaluation(board, mv);
+                if see < Eval::ZERO {
                     continue;
                 }
+                let victim = board.piece_on(mv.to).unwrap();
+                let attacker = moves.piece;
+                let eval = see * Eval::cp(16) + Eval::cp(victim as i16 * 8 - attacker as i16);
                 move_list.push((mv, MoveScore::Capture(eval)));
             }
             false
