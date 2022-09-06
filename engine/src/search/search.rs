@@ -391,16 +391,16 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return eval;
             }
 
-            if let Some(entry) = self.shared.cache_table.get(pos.board(), ply_index) {
-                match entry.kind {
-                    CacheDataKind::Exact => return entry.eval,
-                    CacheDataKind::LowerBound => window.narrow_alpha(entry.eval),
-                    CacheDataKind::UpperBound => window.narrow_beta(entry.eval),
-                }
-                if window.empty() {
-                    return entry.eval;
-                }
-            }
+            // if let Some(entry) = self.shared.cache_table.get(pos.board(), ply_index) {
+            //     match entry.kind {
+            //         CacheDataKind::Exact => return entry.eval,
+            //         CacheDataKind::LowerBound => window.narrow_alpha(entry.eval),
+            //         CacheDataKind::UpperBound => window.narrow_beta(entry.eval),
+            //     }
+            //     if window.empty() {
+            //         return entry.eval;
+            //     }
+            // }
 
             let mut best_eval = pos.evaluate();
             window.narrow_alpha(best_eval);
