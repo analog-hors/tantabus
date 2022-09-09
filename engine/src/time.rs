@@ -86,9 +86,7 @@ impl TimeManager for StandardTimeManager {
                 elapsed
             } => {
                 *elapsed += time_since_update;
-                let time_left = max_usage.saturating_sub(*elapsed);
-                let next_update_estimate = time_since_update.mul_f32(1.5);
-                if elapsed >= allocated || next_update_estimate > time_left {
+                if elapsed >= allocated {
                     *max_usage = Duration::ZERO;
                 }
                 max_usage.saturating_sub(*elapsed)
