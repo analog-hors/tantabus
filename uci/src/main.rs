@@ -38,7 +38,7 @@ impl SearchHandler for UciHandler {
     }
 
     fn new_result(&mut self, mut result: SearchResult) {
-        self.time_left = self.time_manager.update(result.clone(), self.last_update.elapsed());
+        self.time_left = self.time_manager.update(&result, self.last_update.elapsed());
         self.last_update = Instant::now();
         self.prev_result = Some(result.clone());
         self.total_nodes += result.nodes;

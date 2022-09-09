@@ -7,7 +7,7 @@ pub trait TimeManager {
     ///`time` represents the duration since the last update.
     ///Returns a timeout to the next update; If no update happens before
     ///the timeout, stop searching.
-    fn update(&mut self, result: SearchResult, time: Duration) -> Duration;
+    fn update(&mut self, result: &SearchResult, time: Duration) -> Duration;
 }
 
 ///Extremely naive time manager that only uses a fixed amount of time per move.
@@ -26,7 +26,7 @@ impl FixedTimeManager {
 }
 
 impl TimeManager for FixedTimeManager {
-    fn update(&mut self, _: SearchResult, time: Duration) -> Duration {
+    fn update(&mut self, _: &SearchResult, time: Duration) -> Duration {
         self.elapsed += time;
         if self.interval > self.elapsed {
             self.interval - self.elapsed
@@ -46,7 +46,7 @@ impl PercentageTimeManager {
 }
 
 impl TimeManager for PercentageTimeManager {
-    fn update(&mut self, result: SearchResult, time: Duration) -> Duration {
+    fn update(&mut self, result: &SearchResult, time: Duration) -> Duration {
         self.0.update(result, time)
     }
 }
@@ -57,6 +57,7 @@ pub enum StandardTimeManager {
     Fixed(Duration),
     Standard {
         allocated: Duration,
+        max_usage: Duration,
         elapsed: Duration
     }
 }
@@ -64,14 +65,15 @@ pub enum StandardTimeManager {
 impl StandardTimeManager {
     pub fn standard(time_left: Duration, increment: Duration) -> Self {
         Self::Standard {
-            allocated: (time_left + increment).mul_f32(0.05),
+            allocated: (time_left + increment).mul_f32(0.025).min(time_left),
+            max_usage: time_left / 3,
             elapsed: Duration::ZERO
         }
     }
 }
 
 impl TimeManager for StandardTimeManager {
-    fn update(&mut self, _: SearchResult, time_since_update: Duration) -> Duration {
+    fn update(&mut self, _: &SearchResult, time_since_update: Duration) -> Duration {
         match self {
             Self::Infinite => Duration::MAX,
             Self::Fixed(time_left) => {
@@ -80,15 +82,16 @@ impl TimeManager for StandardTimeManager {
             }
             Self::Standard {
                 allocated,
+                max_usage,
                 elapsed
             } => {
                 *elapsed += time_since_update;
-                let time_left = allocated.saturating_sub(*elapsed);
+                let time_left = max_usage.saturating_sub(*elapsed);
                 let next_update_estimate = time_since_update.mul_f32(1.5);
-                if time_left < next_update_estimate {
-                    *allocated = Duration::ZERO;
+                if elapsed >= allocated || next_update_estimate > time_left {
+                    *max_usage = Duration::ZERO;
                 }
-                allocated.saturating_sub(*elapsed)
+                max_usage.saturating_sub(*elapsed)
             }
         }
     }
