@@ -226,9 +226,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.11.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "heck"
@@ -247,9 +247,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.7.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -568,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "tantabus-uci"
-version = "0.1.0"
+version = "3.0.0-dev"
 dependencies = [
  "cozy-chess",
  "indexmap",
@@ -622,9 +622,9 @@ checksum = "c4f5b37a154999a8f3f98cc23a628d850e154479cd94decf3414696e12e31aaf"
 
 [[package]]
 name = "vampirc-uci"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b4edfd132943d0a938352ea5645a2df41291fc6763e0f2999f4f0835fae9c1e"
+checksum = "ced16af195de99405781df968745703aca931dc2062ef6e5ebed8b00f4c4e214"
 dependencies = [
  "chrono",
  "pest",
