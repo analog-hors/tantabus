@@ -31,7 +31,7 @@ define_params! {
         min_depth: u8 = 3;
         bonus_reduction_index: usize = 3;
         bonus_reduction_min_depth: u8 = 7;
-        history_reduction_div: i32 = 205;
+        history_reduction_div: i32 = 820;
     }
     nmp = NmpParams {
         base_reduction: u8 = 3;
