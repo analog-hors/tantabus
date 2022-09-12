@@ -39,7 +39,7 @@ define_params! {
         margin_max_reduction: u8 = 2;
     }
     lmp = LmpParams {
-        quiets_to_check: [usize; 3] = [7, 8, 17];
+        quiets_to_check: [usize; 4] = [7, 8, 17, 20];
     }
     fp = FpParams {
         margins: [i16; 2] = [293, 622];
