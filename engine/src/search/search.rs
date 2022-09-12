@@ -402,13 +402,17 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let mut best_eval = pos.evaluate();
-            window.narrow_alpha(best_eval);
-            if window.empty() {
-                return best_eval;
+            let mut best_eval = Eval::MIN;
+
+            if pos.board().checkers().is_empty() {
+                best_eval = pos.evaluate();
+                window.narrow_alpha(best_eval);
+                if window.empty() {
+                    return best_eval;
+                }
             }
 
-            let mut move_list = QSearchMoveList::new(pos.board());
+            let mut move_list = QSearchMoveList::new(pos.board(), self);
             while let Some((_, (mv, _))) = move_list.pick() {
                 let child = pos.play_unchecked(mv);
                 let eval = -self.quiescence(

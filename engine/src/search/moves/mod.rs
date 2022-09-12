@@ -224,13 +224,15 @@ pub struct QSearchMoveList {
 }
 
 impl QSearchMoveList {
-    pub fn new(board: &Board) -> Self {
+    pub fn new<H>(board: &Board, searcher: &Searcher<H>) -> Self {
         let mut move_list = ArrayVec::new();
 
+        let in_check = !board.checkers().is_empty();
         let their_pieces = board.colors(!board.side_to_move());
         board.generate_moves(|moves| {
             let mut capture_moves = moves;
             capture_moves.to &= their_pieces;
+
             for mv in capture_moves {
                 // CITE: This use of SEE in quiescence and pruning moves with
                 // negative SEE was implemented based on a chesspgoramming.org page.
@@ -241,6 +243,14 @@ impl QSearchMoveList {
                 }
                 let mvv_lva_score = MvvLvaScore::new(board, mv);
                 move_list.push((mv, MoveScore::Capture(eval, mvv_lva_score)));
+            }
+            if in_check {
+                let mut quiet_moves = moves;
+                quiet_moves.to ^= capture_moves.to;
+                for mv in quiet_moves {
+                    let history = searcher.data.history_table.get(board, mv);
+                    move_list.push((mv, MoveScore::Quiet(history)));
+                }
             }
             false
         });
