@@ -35,7 +35,7 @@ enum MoveGenStage {
     Finished
 }
 
-fn swap_max_move_to_front(moves: &mut [ScoredMove]) -> Option<&ScoredMove> {
+fn swap_max_to_front<S: Ord>(moves: &mut [(Move, S)]) -> Option<&(Move, S)> {
     let max_index = moves
         .iter()
         .enumerate()
@@ -218,54 +218,60 @@ impl<'b> MoveList<'b> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum QSearchMoveScore {
+    InCheckMove,
+    Capture(Eval, MvvLvaScore)
+}
+
 pub struct QSearchMoveList {
-    move_list: ArrayVec<ScoredMove, MAX_CAPTURES>,
+    move_list: ArrayVec<(Move, QSearchMoveScore), MAX_CAPTURES>,
     yielded: usize
 }
 
 impl QSearchMoveList {
-    pub fn new<H>(board: &Board, searcher: &Searcher<H>) -> Self {
+    pub fn new(board: &Board) -> Self {
         let mut move_list = ArrayVec::new();
 
         let in_check = !board.checkers().is_empty();
         let their_pieces = board.colors(!board.side_to_move());
-        board.generate_moves(|moves| {
-            let mut capture_moves = moves;
-            capture_moves.to &= their_pieces;
-
-            for mv in capture_moves {
-                // CITE: This use of SEE in quiescence and pruning moves with
-                // negative SEE was implemented based on a chesspgoramming.org page.
-                // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
-                let eval = static_exchange_evaluation(board, mv);
-                if eval < Eval::ZERO && !move_list.is_empty() {
-                    continue;
+        if !in_check {
+            board.generate_moves(|moves| {
+                let mut capture_moves = moves;
+                capture_moves.to &= their_pieces;
+                for mv in capture_moves {
+                    // CITE: This use of SEE in quiescence and pruning moves with
+                    // negative SEE was implemented based on a chesspgoramming.org page.
+                    // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
+                    let eval = static_exchange_evaluation(board, mv);
+                    if eval < Eval::ZERO && !move_list.is_empty() {
+                        continue;
+                    }
+                    let mvv_lva_score = MvvLvaScore::new(board, mv);
+                    move_list.push((mv, QSearchMoveScore::Capture(eval, mvv_lva_score)));
                 }
-                let mvv_lva_score = MvvLvaScore::new(board, mv);
-                move_list.push((mv, MoveScore::Capture(eval, mvv_lva_score)));
-            }
-            if in_check {
-                let mut quiet_moves = moves;
-                quiet_moves.to ^= capture_moves.to;
-                for mv in quiet_moves {
-                    let history = searcher.data.history_table.get(board, mv);
-                    move_list.push((mv, MoveScore::Quiet(history)));
+                false
+            });
+        } else {
+            board.generate_moves(|moves| {
+                for mv in moves {
+                    move_list.push((mv, QSearchMoveScore::InCheckMove));
                 }
-            }
-            false
-        });
+                false
+            });
+        }
         Self {
             move_list,
             yielded: 0
         }
     }
 
-    pub fn pick(&mut self) -> Option<(usize, ScoredMove)> {
+    pub fn pick(&mut self) -> Option<(usize, Move)> {
         let to_yield = &mut self.move_list[self.yielded..];
-        if let Some(&result) = swap_max_move_to_front(to_yield) {
+        if let Some(&(mv, _)) = swap_max_to_front(to_yield) {
             let index = self.yielded;
             self.yielded += 1;
-            return Some((index, result));
+            return Some((index, mv));
         }
         None
     }
