@@ -29,7 +29,7 @@ macro_rules! define_params {
 define_params! {
     lmr = LmrParams {
         min_depth: u8 = 3;
-        bonus_reduction_index: usize = 3;
+        bonus_reduction_index: usize = 2;
         bonus_reduction_min_depth: u8 = 7;
         history_reduction_div: i32 = 205;
     }
