@@ -238,7 +238,7 @@ impl QSearchMoveList {
                 // negative SEE was implemented based on a chesspgoramming.org page.
                 // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
                 let eval = static_exchange_evaluation(board, mv);
-                if eval < Eval::ZERO {
+                if eval < Eval::ZERO && !move_list.is_empty() {
                     continue;
                 }
                 let mvv_lva_score = MvvLvaScore::new(board, mv);
