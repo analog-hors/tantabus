@@ -35,8 +35,10 @@ pub(crate) type KillerEntry = ArrayVec<Move, KILLER_ENTRIES>;
 
 /// Represents the local data required to start one search.
 /// This struct is also reused between iterations.
+/// TODO the visibility of these fields are kind of wack.
 pub struct SearchData {
     pub game_history: Vec<u64>,
+    pub static_eval_stack: Vec<Eval>,
     pub killers: [KillerEntry; u8::MAX as usize],
     pub history_table: HistoryTable
 }
@@ -46,6 +48,7 @@ impl SearchData {
         const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
         Self {
             game_history: history.clone(),
+            static_eval_stack: Vec::with_capacity(u8::MAX as usize),
             killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
             history_table: HistoryTable::new()
         }
@@ -128,7 +131,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
+        //TODO the static eval isn't actually initialized until later
+        // for perf reasons but we can still access it...
         self.data.game_history.push(pos.board().hash());
+        self.data.static_eval_stack.push(Eval::MIN);
         let result = (|| {
             self.stats.seldepth = self.stats.seldepth.max(ply_index);
 
@@ -195,11 +201,20 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     }
                 })
                 .unwrap_or_else(|| pos.evaluate());
+            self.data.static_eval_stack[ply_index as usize] = static_eval;
+
+            // Has our static eval improved since the last move?
+            let improving = if ply_index >= 2 {
+                let prev_static_eval = self.data.static_eval_stack[ply_index as usize - 2];
+                static_eval > prev_static_eval
+            } else {
+                false
+            };
 
             if !matches!(node, Node::Root | Node::Pv) {
                 // CITE: Reverse futility pruning.
                 // https://www.chessprogramming.org/Reverse_Futility_Pruning
-                if let Some(margin) = self.shared.search_params.rfp.margin(depth) {
+                if let Some(margin) = self.shared.search_params.rfp.margin(depth, improving) {
                     let eval_estimate = static_eval.saturating_sub(margin);
                     if eval_estimate >= window.beta {
                         return Ok(eval_estimate);
@@ -367,6 +382,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
             Ok(best_eval)
         })();
         self.data.game_history.pop();
+        self.data.static_eval_stack.pop();
+        
         result
     }
 

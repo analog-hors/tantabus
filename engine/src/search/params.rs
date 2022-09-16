@@ -46,6 +46,7 @@ define_params! {
     }
     rfp = RfpParams {
         base_margin: i16 = 33;
+        improving_bonus: i16 = 40;
         max_depth: u8 = 4;
     }
 }
@@ -94,9 +95,13 @@ impl FpParams {
 }
 
 impl RfpParams {
-    pub fn margin(&self, depth: u8) -> Option<Eval> {
+    pub fn margin(&self, depth: u8, improving: bool) -> Option<Eval> {
         if depth <= self.max_depth {
-            Some(Eval::cp(self.base_margin * depth as i16))
+            let mut margin = self.base_margin * depth as i16;
+            if improving {
+                margin -= self.improving_bonus;
+            }
+            Some(Eval::cp(margin))
         } else {
             None
         }
