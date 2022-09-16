@@ -46,7 +46,7 @@ define_params! {
     }
     rfp = RfpParams {
         base_margin: i16 = 33;
-        improving_bonus: i16 = 40;
+        improving_bonus: i16 = 20;
         max_depth: u8 = 4;
     }
 }
