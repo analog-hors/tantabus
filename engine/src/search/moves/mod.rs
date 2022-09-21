@@ -18,7 +18,7 @@ use partition::*;
 pub enum MoveScore {
     LosingCapture(Eval),
     Quiet(i32),
-    Killer,
+    Killer(i32),
     Capture(Eval, MvvLvaScore),
     Pv
 }
@@ -183,10 +183,10 @@ impl<'b> MoveList<'b> {
                 self.quiets = Some(self.move_list.new_partition(|mut quiets| {
                     for &moves in &self.dense_quiets {
                         for mv in moves {
+                            let history = searcher.data.history_table.get(self.data.board, mv);
                             if self.data.killers.contains(&mv) {
-                                killers.push((mv, MoveScore::Killer));
+                                killers.push((mv, MoveScore::Killer(history)));
                             } else {
-                                let history = searcher.data.history_table.get(self.data.board, mv);
                                 quiets.push((mv, MoveScore::Quiet(history)));
                             }
                         }

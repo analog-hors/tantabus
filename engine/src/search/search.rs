@@ -30,7 +30,7 @@ pub struct SearchSharedState {
     pub search_params: SearchParams
 }
 
-pub const KILLER_ENTRIES: usize = 2;
+pub const KILLER_ENTRIES: usize = 3;
 pub(crate) type KillerEntry = ArrayVec<Move, KILLER_ENTRIES>;
 
 /// Represents the local data required to start one search.
