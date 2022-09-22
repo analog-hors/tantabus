@@ -104,7 +104,7 @@ impl<H: SearchHandler> Engine<H> {
             shared: SearchSharedState {
                 history,
                 cache_table,
-                search_params
+                search_params: SearchParamHandler::new(search_params),
             },
             options
         }
