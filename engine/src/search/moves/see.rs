@@ -15,9 +15,19 @@ fn piece_value(piece: Piece) -> Eval {
     })
 }
 
+const NO_THRESHOLD: i16 = i16::MIN;
+
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
+    inner_see::<NO_THRESHOLD>(board, capture)
+}
+
+pub fn _static_exchange_evaluation_above<const THRESHOLD: i16>(board: &Board, capture: Move) -> bool {
+    inner_see::<THRESHOLD>(board, capture) >= Eval::cp(THRESHOLD)
+}
+
+pub fn inner_see<const THRESHOLD: i16>(board: &Board, capture: Move) -> Eval {
     use Piece::*;
 
     let target_sq = capture.to;
@@ -38,10 +48,26 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     let mut target_piece = board.piece_on(capture.from).unwrap();
     let mut color = !initial_color;
 
+    // Score if we were to stop capturing right now.
+    let mut balance = piece_value(initial_capture);
     let mut gains = ArrayVec::<_, 32>::new();
-    gains.push(piece_value(initial_capture));
+    gains.push(balance);
 
     'exchange: loop {
+        if THRESHOLD != NO_THRESHOLD {
+            let cutoff = if color == initial_color {
+                // If we've exceeded the threshold, we can just stop; Anything else is overkill.
+                balance >= Eval::cp(THRESHOLD)
+            } else {
+                // If they failed to meet the threshold, we can just stop; Anything else is overkill.
+                balance < Eval::cp(THRESHOLD)
+            };
+            if cutoff {
+                // Early return
+                break;
+            }
+        }
+
         // Find least valuable piece to capture victim
         for &attacker_piece in &Piece::ALL {
             let our_attackers = attackers & board.colored_pieces(color, attacker_piece);
@@ -49,6 +75,11 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
                 // "Capture" victim
                 let victim_value = piece_value(target_piece);
                 gains.push(victim_value);
+                if color == initial_color {
+                    balance += victim_value;
+                } else {
+                    balance -= victim_value;
+                }
 
                 // We captured the king lol
                 if target_piece == Piece::King {
@@ -75,22 +106,24 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
                 // Swap sides
                 color = !color;
                 
+                // Do another iteration (kind of like a recursive call)
                 continue 'exchange;
             }
         }
-
-        // No attacker could be found, calculate final result.
-        while gains.len() > 1 {
-            // First capture is forced, but all others can be ignored.
-            let forced = gains.len() == 2;
-            let their_gain = gains.pop().unwrap();
-            let our_gain = gains.last_mut().unwrap();
-            *our_gain -= their_gain;
-            if !forced && *our_gain < Eval::ZERO {
-                // Choose not to make the capture.
-                *our_gain = Eval::ZERO;
-            }
-        }
-        return gains.pop().unwrap();
+        break;
     }
+
+    // No attacker could be found, calculate final result.
+    while gains.len() > 1 {
+        // First capture is forced, but all others can be ignored.
+        let forced = gains.len() == 2;
+        let their_gain = gains.pop().unwrap();
+        let our_gain = gains.last_mut().unwrap();
+        *our_gain -= their_gain;
+        if !forced && *our_gain < Eval::ZERO {
+            // Choose not to make the capture.
+            *our_gain = Eval::ZERO;
+        }
+    }
+    gains.pop().unwrap()
 }
