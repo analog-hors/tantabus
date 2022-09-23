@@ -29,9 +29,9 @@ macro_rules! define_params {
 define_params! {
     lmr = LmrParams {
         min_depth: u8 = 3;
-        bonus_reduction_index: usize = 3;
-        bonus_reduction_min_depth: u8 = 7;
-        history_reduction_div: i32 = 205;
+        base_reduction: f32 = 0.007;
+        div: f32 = 2.792;
+        history_reduction_div: i32 = 210;
     }
     nmp = NmpParams {
         base_reduction: u8 = 3;
@@ -42,61 +42,87 @@ define_params! {
         quiets_to_check: [usize; 3] = [7, 8, 17];
     }
     fp = FpParams {
-        margins: [i16; 2] = [293, 622];
+        margins: [i16; 2] = [293, 620];
     }
     rfp = RfpParams {
-        base_margin: i16 = 33;
+        base_margin: i16 = 30;
         max_depth: u8 = 4;
     }
 }
 
-impl LmrParams {
-    pub fn reduction(&self, i: usize, depth: u8, history: i32) -> u8 {
-        let mut reduction: i8 = if i < self.bonus_reduction_index {
-            0
-        } else if depth < self.bonus_reduction_min_depth {
-            1
-        } else {
-            2
-        };
-        reduction -= (history / self.history_reduction_div) as i8;
-        reduction.max(0) as u8
+struct Lut2d<T, const I: usize, const J: usize> {
+    lut: [[T; J]; I]
+}
+
+impl<T: Copy + Default, const I: usize, const J: usize> Lut2d<T, I, J> {
+    pub fn new(mut init: impl FnMut(usize, usize) -> T) -> Self {
+        let mut lut = [[T::default(); J]; I];
+        for i in 0..I {
+            for j in 0..J {
+                lut[i][j] = init(i, j);
+            }
+        }
+        Self { lut }
+    }
+
+    pub fn get(&self, i: usize, j: usize) -> T {
+        self.lut[i.min(I - 1)][j.min(J - 1)]
     }
 }
 
-impl NmpParams {
-    pub fn reduction(&self, static_eval: Eval, window: Window) -> u8 {
-        let mut reduction = self.base_reduction;
+pub struct SearchParamHandler {
+    params: SearchParams,
+    lmr_lut: Lut2d<u8, 64, 64>,
+}
+
+impl SearchParamHandler {
+    pub fn new(params: SearchParams) -> Self {
+        let lmr_lut = Lut2d::new(|depth, move_index| {
+            let base = params.lmr.base_reduction;
+            let div = params.lmr.div;
+            (base + (depth as f32).ln() * (move_index as f32).ln() / div) as u8
+        });
+        Self { params, lmr_lut }
+    }
+
+    pub fn lmr_min_depth(&self) -> u8 {
+        self.params.lmr.min_depth
+    }
+
+    pub fn lmr_reduction(&self, move_index: usize, depth: u8, history: i32) -> u8 {
+        let mut reduction = self.lmr_lut.get(depth as usize, move_index) as i32;
+        reduction -= history / self.params.lmr.history_reduction_div;
+        reduction.max(0) as u8
+    }
+
+    pub fn nmp_reduction(&self, static_eval: Eval, window: Window) -> u8 {
+        let nmp = &self.params.nmp;
+        let mut reduction = nmp.base_reduction;
         if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
             if eval >= beta {
                 // CITE: This kind of reduction increase when eval >= beta was first observed in MadChess.
                 // https://www.madchess.net/2021/02/09/madchess-3-0-beta-f231dac-pvs-and-null-move-improvements/
-                reduction += ((eval as i32 - beta as i32) / self.margin_div)
-                    .min(self.margin_max_reduction as i32) as u8;
+                reduction += ((eval as i32 - beta as i32) / nmp.margin_div)
+                    .min(nmp.margin_max_reduction as i32) as u8;
             }
         }
         reduction
     }
-}
 
-impl LmpParams {
-    pub fn quiets_to_check(&self, depth: u8) -> usize {
-        *self.quiets_to_check.get(depth as usize - 1)
+    pub fn lmp_quiets_to_check(&self, depth: u8) -> usize {
+        *self.params.lmp.quiets_to_check.get(depth as usize - 1)
             .unwrap_or(&usize::MAX)
     }
-}
 
-impl FpParams {
-    pub fn margin(&self, depth: u8) -> Option<Eval> {
-        self.margins.get(depth as usize - 1)
+    pub fn fp_margin(&self, depth: u8) -> Option<Eval> {
+        self.params.fp.margins.get(depth as usize - 1)
             .map(|&e| Eval::cp(e))
     }
-}
 
-impl RfpParams {
-    pub fn margin(&self, depth: u8) -> Option<Eval> {
-        if depth <= self.max_depth {
-            Some(Eval::cp(self.base_margin * depth as i16))
+    pub fn rfp_margin(&self, depth: u8) -> Option<Eval> {
+        let rfp = &self.params.rfp;
+        if depth <= rfp.max_depth {
+            Some(Eval::cp(rfp.base_margin * depth as i16))
         } else {
             None
         }

@@ -3,7 +3,7 @@ use cozy_chess::*;
 
 use crate::eval::*;
 use super::position::Position;
-use super::{SearchHandler, SearchParams};
+use super::{SearchHandler, SearchParamHandler};
 use super::cache::*;
 use super::helpers::move_is_quiet;
 use super::moves::*;
@@ -27,7 +27,7 @@ pub struct SearcherResult {
 pub struct SearchSharedState {
     pub history: Vec<u64>,
     pub cache_table: CacheTable,
-    pub search_params: SearchParams
+    pub search_params: SearchParamHandler,
 }
 
 pub const KILLER_ENTRIES: usize = 2;
@@ -199,7 +199,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             if !matches!(node, Node::Root | Node::Pv) {
                 // CITE: Reverse futility pruning.
                 // https://www.chessprogramming.org/Reverse_Futility_Pruning
-                if let Some(margin) = self.shared.search_params.rfp.margin(depth) {
+                if let Some(margin) = self.shared.search_params.rfp_margin(depth) {
                     let eval_estimate = static_eval.saturating_sub(margin);
                     if eval_estimate >= window.beta {
                         return Ok(eval_estimate);
@@ -224,7 +224,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             if node != Node::Root && do_nmp {
                 if let Some(child) = pos.null_move() {
                     let mut window = window.null_window_beta();
-                    let reduction = self.shared.search_params.nmp.reduction(static_eval, window);
+                    let reduction = self.shared.search_params.nmp_reduction(static_eval, window);
                     let eval = -self.search_node(
                         Node::Normal,
                         &child,
@@ -250,13 +250,13 @@ impl<H: SearchHandler> Searcher<'_, H> {
             // CITE: Futility pruning.
             // This implementation is also based on extended futility pruning.
             // https://www.chessprogramming.org/Futility_Pruning
-            let futile = if let Some(margin) = self.shared.search_params.fp.margin(depth) {
+            let futile = if let Some(margin) = self.shared.search_params.fp_margin(depth) {
                 let max_eval = static_eval.saturating_add(margin);
                 max_eval <= window.alpha
             } else {
                 false
             };
-            let mut quiets_to_check = self.shared.search_params.lmp.quiets_to_check(depth);
+            let mut quiets_to_check = self.shared.search_params.lmp_quiets_to_check(depth);
             while let Some((i, (mv, move_score))) = moves.pick(self) {
                 // CITE: Late move pruning.
                 // We check only a certain number of quiets per node given some depth.
@@ -290,9 +290,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let mut reduction = 0;
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
-                if depth >= self.shared.search_params.lmr.min_depth && quiet && !in_check && !gives_check {
+                if depth >= self.shared.search_params.lmr_min_depth() && quiet && !in_check && !gives_check {
                     let history = self.data.history_table.get(pos.board(), mv);
-                    reduction += self.shared.search_params.lmr.reduction(i, depth, history);
+                    reduction += self.shared.search_params.lmr_reduction(i, depth, history);
                 }
                 let mut eval = -self.search_node(
                     child_node_type,

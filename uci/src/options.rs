@@ -11,6 +11,36 @@ pub struct UciOptions {
 
 type Handler = Box<dyn Fn(&mut UciOptions, String)>;
 
+trait Tunable {
+    fn to_tune_value(self) -> i64;
+    fn from_tune_value(value: i64) -> Self;
+}
+
+macro_rules! impl_tunable {
+    ($($type:ty),*) => {$(
+        impl Tunable for $type {
+            fn to_tune_value(self) -> i64 {
+                self as i64
+            }
+
+            fn from_tune_value(value: i64) -> Self {
+                value as _
+            }
+        }
+    )*}
+}
+impl_tunable!(i8, u8, i16, u16, i32, u32);
+
+impl Tunable for f32 {
+    fn to_tune_value(self) -> i64 {
+        (self * 1000.0).round() as i64
+    }
+
+    fn from_tune_value(value: i64) -> Self {
+        value as f32 / 1000.0
+    }
+}
+
 pub struct UciOptionsHandler {
     pub handlers: IndexMap<String, (UciOptionConfig, Handler)>,
     pub options: UciOptions
@@ -77,13 +107,12 @@ impl UciOptionsHandler {
                 add_handlers! {
                     $(UciOptionConfig::Spin {
                         name: concat!("TUNE_", stringify!($($field)*)).replace(' ', ""),
-                        default: Some(options.search_params.$($field)* as i64),
+                        default: Some(options.search_params.$($field)*.to_tune_value()),
                         min: Some(i32::MIN as i64),
                         max: Some(i32::MAX as i64)
                     } => |options, value| {
-                        options.search_params.$($field)* = value
-                            .parse()
-                            .unwrap();
+                        let value = value.parse().unwrap();
+                        options.search_params.$($field)* = Tunable::from_tune_value(value);
                     })*
                 }
             }
@@ -91,8 +120,8 @@ impl UciOptionsHandler {
         // Modify for exposing search params for tuning
         add_search_param_handlers! {
             // [lmr.min_depth]
-            // [lmr.bonus_reduction_index]
-            // [lmr.bonus_reduction_min_depth]
+            // [lmr.base_reduction]
+            // [lmr.div]
             // [lmr.history_reduction_div]
             // [nmp.base_reduction]
             // [nmp.margin_div]
