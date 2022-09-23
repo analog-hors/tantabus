@@ -343,7 +343,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     // Suggested by the Black Marlin author and additionally observed in MadChess.
                     for &(prev_mv, _) in moves.yielded() {
                         if prev_mv != mv {
-                            if move_is_quiet(prev_mv, pos.board()) {
+                            // Punish quiets only if the cutoff was not caused by a capture, which is expected.
+                            if !is_capture && move_is_quiet(prev_mv, pos.board()) {
                                 self.data.quiet_history.update(pos.board(), prev_mv, depth, false);
                             }
                             if move_is_capture(prev_mv, pos.board()) {
