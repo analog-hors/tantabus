@@ -29,23 +29,23 @@ macro_rules! define_params {
 define_params! {
     lmr = LmrParams {
         min_depth: u8 = 3;
-        base_reduction: f32 = 0.724;
-        div: f32 = 3.874;
-        history_reduction_div: i32 = 214;
+        base_reduction: f32 = 0.007;
+        div: f32 = 2.792;
+        history_reduction_div: i32 = 210;
     }
     nmp = NmpParams {
         base_reduction: u8 = 3;
-        margin_div: i32 = 93;
+        margin_div: i32 = 90;
         margin_max_reduction: u8 = 2;
     }
     lmp = LmpParams {
         quiets_to_check: [usize; 3] = [7, 8, 17];
     }
     fp = FpParams {
-        margins: [i16; 2] = [303, 623];
+        margins: [i16; 2] = [293, 620];
     }
     rfp = RfpParams {
-        base_margin: i16 = 31;
+        base_margin: i16 = 30;
         max_depth: u8 = 4;
     }
 }
