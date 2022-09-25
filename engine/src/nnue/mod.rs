@@ -1,10 +1,8 @@
 use cozy_chess::*;
 
-mod ops;
 mod layers;
 
 use self::layers::*;
-use self::ops::*;
 
 const FEATURES: usize = 768;
 const FT_OUT: usize = 128;
@@ -16,8 +14,8 @@ const OUTPUT_SCALE: i32 = 115;
 
 #[derive(Debug, Clone)]
 pub struct Nnue {
-    pub ft: BitLinear<i16, FEATURES, FT_OUT>,
-    pub l1: Linear<i8, i32, {FT_OUT * Color::NUM}, L1_OUT>
+    pub ft: BitLinear<FEATURES, FT_OUT>,
+    pub l1: Linear<{FT_OUT * Color::NUM}, L1_OUT>
 }
 
 impl Nnue {
@@ -77,13 +75,17 @@ impl<'s> NnueState<'s> {
 
     pub fn evaluate(&self, side_to_move: Color) -> i32 {
         let mut inputs = [[0; FT_OUT]; Color::NUM];
-        self.accumulator[side_to_move as usize]
-            .clipped_relu(0, ACTIVATION_RANGE, &mut inputs[0]);
-        self.accumulator[(!side_to_move) as usize]
-            .clipped_relu(0, ACTIVATION_RANGE, &mut inputs[1]);
+        clipped_relu(&self.accumulator[side_to_move as usize], &mut inputs[0]);
+        clipped_relu(&self.accumulator[!side_to_move as usize], &mut inputs[1]);
         let inputs = bytemuck::cast(inputs);
         let mut outputs = [0; L1_OUT];
         self.model.l1.activate(&inputs, &mut outputs);
-        outputs[0] * OUTPUT_SCALE / WEIGHT_SCALE as i32 / ACTIVATION_RANGE as i32
+        outputs[0] * OUTPUT_SCALE / WEIGHT_SCALE as LinearB / ACTIVATION_RANGE as LinearB
+    }
+}
+
+fn clipped_relu<const LEN: usize>(vec: &[BitLinearWB; LEN], out: &mut [LinearW; LEN]) {
+    for (&v, o) in vec.iter().zip(out) {
+        *o = v.clamp(0, ACTIVATION_RANGE as BitLinearWB) as LinearW;
     }
 }
