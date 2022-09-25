@@ -48,10 +48,12 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
     - Basic king safety using "virtual queen mobility" and attacked squares around the king
     - Tapered/phased evaluation (using Fruit-like method)
 - NNUE
-    - Simple 768 -> 128x2 -> 1 network architecture
+    - Simple (768 -> 128)x2 -> 1 network architecture
     - Data generated using custom program
     - Network trained using [MarlinFlow](https://github.com/dsekercioglu/marlinflow)
     - Two halves ordered by side to move and side not to move
+    - Network quantized into integers for inference
+    - Inference accelerated by custom SIMD code
 ### Time management
 - Uses a fixed percentage of time left
 - Aborts after an iteration completes when a "soft limit" is exceeded
