@@ -84,8 +84,8 @@ impl<'s> NnueState<'s> {
     }
 }
 
-fn clipped_relu<const LEN: usize>(vec: &[BitLinearWB; LEN], out: &mut [LinearW; LEN]) {
+fn clipped_relu<const LEN: usize>(vec: &[BitLinearWB; LEN], out: &mut [LinearI; LEN]) {
     for (&v, o) in vec.iter().zip(out) {
-        *o = v.clamp(0, ACTIVATION_RANGE as BitLinearWB) as LinearW;
+        *o = v.clamp(0, ACTIVATION_RANGE as BitLinearWB) as LinearI;
     }
 }
