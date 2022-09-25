@@ -52,7 +52,7 @@ pub fn feature(perspective: Color, color: Color, piece: Piece, square: Square) -
 
 impl<'s> NnueState<'s> {
     pub fn model(&self) -> &Nnue {
-        &self.model
+        self.model
     }
 
     pub fn accumulator(&self) -> &[[i16; FT_OUT]; Color::NUM] {

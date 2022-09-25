@@ -45,7 +45,7 @@ impl SearchData {
     pub fn new(history: Vec<u64>) -> Self {
         const EMPTY_KILLER_ENTRY: KillerEntry = KillerEntry::new_const();
         Self {
-            game_history: history.clone(),
+            game_history: history,
             killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
             history_table: HistoryTable::new()
         }
@@ -156,7 +156,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return Err(());
             }
 
-            if node != Node::Root && self.repetitions(&pos.board()) > 0 {
+            if node != Node::Root && self.repetitions(pos.board()) > 0 {
                 return Ok(Eval::DRAW);
             }
             match pos.board().status() {
@@ -335,7 +335,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     // CITE: We additionally punish the history of quiet moves that don't produce cutoffs.
                     // Suggested by the Black Marlin author and additionally observed in MadChess.
                     for &(prev_mv, _) in moves.yielded() {
-                        if prev_mv != mv && move_is_quiet(prev_mv, &pos.board()) {
+                        if prev_mv != mv && move_is_quiet(prev_mv, pos.board()) {
                             self.data.history_table.update(pos.board(), prev_mv, depth, false);
                         }
                     }

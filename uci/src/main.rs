@@ -220,8 +220,7 @@ fn main() {
                     position = Some((board, converted_moves));
                 }
                 UciMessage::Go { time_control, search_control } => {
-                    let time_manager;
-                    time_manager = match time_control {
+                    let time_manager = match time_control {
                         Some(UciTimeControl::MoveTime(time)) => StandardTimeManager::Fixed(time.to_std().unwrap()),
                         Some(UciTimeControl::TimeLeft {
                             white_time,

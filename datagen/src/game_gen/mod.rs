@@ -57,7 +57,7 @@ struct GameGenSharedState {
 pub fn run_game_gen(config: &GameGenRunnerConfig, abort: &Arc<AtomicBool>) {
     let threads = config.threads;
     let game_gen_config = GameGenConfig {
-        cache_size: config.cache_size as usize * 1000_000,
+        cache_size: config.cache_size as usize * 1_000_000,
         opening_moves: config.opening_moves,
         min_nodes: config.min_nodes,
         min_depth: config.min_depth
