@@ -5,7 +5,7 @@ use crate::eval::*;
 use super::position::Position;
 use super::{SearchHandler, SearchParamHandler};
 use super::cache::*;
-use super::helpers::move_is_quiet;
+use super::helpers::{move_is_quiet, move_is_capture};
 use super::moves::*;
 use super::window::Window;
 use super::oracle;
@@ -38,7 +38,8 @@ pub(crate) type KillerEntry = ArrayVec<Move, KILLER_ENTRIES>;
 pub struct SearchData {
     pub game_history: Vec<u64>,
     pub killers: [KillerEntry; u8::MAX as usize],
-    pub history_table: HistoryTable
+    pub quiet_history: HistoryTable,
+    pub capture_history: HistoryTable
 }
 
 impl SearchData {
@@ -47,7 +48,8 @@ impl SearchData {
         Self {
             game_history: history,
             killers: [EMPTY_KILLER_ENTRY; u8::MAX as usize],
-            history_table: HistoryTable::new()
+            quiet_history: HistoryTable::new(),
+            capture_history: HistoryTable::new(),
         }
     }
 }
@@ -271,9 +273,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let child = pos.play_unchecked(mv);
                 self.shared.cache_table.prefetch(child.board());
                 let gives_check = !child.board().checkers().is_empty();
-                let quiet = move_is_quiet(mv, pos.board());
+                let is_quiet = move_is_quiet(mv, pos.board());
+                let is_capture = child.board().occupied().len() < pos.board().occupied().len();
 
-                if best_move.is_some() && futile && quiet && !in_check && !gives_check {
+                if best_move.is_some() && futile && is_quiet && !in_check && !gives_check {
                     continue;
                 }
 
@@ -290,8 +293,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let mut reduction = 0;
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
-                if depth >= self.shared.search_params.lmr_min_depth() && quiet && !in_check && !gives_check {
-                    let history = self.data.history_table.get(pos.board(), mv);
+                if depth >= self.shared.search_params.lmr_min_depth() && is_quiet && !in_check && !gives_check {
+                    let history = self.data.quiet_history.get(pos.board(), mv);
                     reduction += self.shared.search_params.lmr_reduction(i, depth, history);
                 }
                 let mut eval = -self.search_node(
@@ -320,7 +323,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
                 window.narrow_alpha(eval);
                 if window.empty() {
-                    if move_is_quiet(mv, pos.board()) {
+                    if is_quiet {
                         // CITE: Killer moves.
                         // https://www.chessprogramming.org/Killer_Heuristic
                         let killers = &mut self.data.killers[ply_index as usize];
@@ -330,13 +333,23 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         killers.push(mv);
                         // CITE: History heuristic.
                         // https://www.chessprogramming.org/History_Heuristic
-                        self.data.history_table.update(pos.board(), mv, depth, true);
+                        self.data.quiet_history.update(pos.board(), mv, depth, true);
+                    }
+                    if is_capture {
+                        // CITE: Capture history.
+                        self.data.capture_history.update(pos.board(), mv, depth, true);
                     }
                     // CITE: We additionally punish the history of quiet moves that don't produce cutoffs.
                     // Suggested by the Black Marlin author and additionally observed in MadChess.
                     for &(prev_mv, _) in moves.yielded() {
-                        if prev_mv != mv && move_is_quiet(prev_mv, pos.board()) {
-                            self.data.history_table.update(pos.board(), prev_mv, depth, false);
+                        if prev_mv != mv {
+                            // Punish quiets only if the cutoff was not caused by a capture, which is expected.
+                            if !is_capture && move_is_quiet(prev_mv, pos.board()) {
+                                self.data.quiet_history.update(pos.board(), prev_mv, depth, false);
+                            }
+                            if move_is_capture(prev_mv, pos.board()) {
+                                self.data.capture_history.update(pos.board(), prev_mv, depth, false);
+                            }
                         }
                     }
                     break;
@@ -408,7 +421,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            let mut move_list = QSearchMoveList::new(pos.board());
+            let mut move_list = QSearchMoveList::new(pos.board(), self);
             while let Some((_, (mv, _))) = move_list.pick() {
                 let child = pos.play_unchecked(mv);
                 let eval = -self.quiescence(

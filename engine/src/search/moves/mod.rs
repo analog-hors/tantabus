@@ -16,10 +16,10 @@ use partition::*;
 // https://www.chessprogramming.org/Move_Ordering
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
-    LosingCapture(Eval),
+    LosingCapture(Eval, i32),
     Quiet(i32),
     Killer,
-    Capture(Eval, MvvLvaScore),
+    Capture(Eval, i32),
     Pv
 }
 
@@ -45,17 +45,6 @@ fn swap_max_move_to_front(moves: &mut [ScoredMove]) -> Option<&ScoredMove> {
         moves.swap(max_index, 0);
     }
     moves.first()
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-pub struct MvvLvaScore(i8);
-
-impl MvvLvaScore {
-    pub fn new(board: &Board, mv: Move) -> Self {
-        let victim = board.piece_on(mv.to).unwrap();
-        let attacker = board.piece_on(mv.from).unwrap();
-        Self(victim as i8 * 8 - attacker as i8)
-    }
 }
 
 // 12 pieces that can capture on 8 squares, 4 pieces that can capture on 4 squares.
@@ -159,11 +148,11 @@ impl<'b> MoveList<'b> {
                         for mv in capture_moves {
                             let eval = static_exchange_evaluation(self.data.board, mv);
 
+                            let history = searcher.data.capture_history.get(self.data.board, mv);
                             if eval >= Eval::ZERO {
-                                let mvv_lva_score = MvvLvaScore::new(self.data.board, mv);
-                                captures.push((mv, MoveScore::Capture(eval, mvv_lva_score)));
+                                captures.push((mv, MoveScore::Capture(eval, history)));
                             } else {
-                                losing_captures.push((mv, MoveScore::LosingCapture(eval)));
+                                losing_captures.push((mv, MoveScore::LosingCapture(eval, history)));
                             }
                         }
                         false
@@ -186,7 +175,7 @@ impl<'b> MoveList<'b> {
                             if self.data.killers.contains(&mv) {
                                 killers.push((mv, MoveScore::Killer));
                             } else {
-                                let history = searcher.data.history_table.get(self.data.board, mv);
+                                let history = searcher.data.quiet_history.get(self.data.board, mv);
                                 quiets.push((mv, MoveScore::Quiet(history)));
                             }
                         }
@@ -224,7 +213,7 @@ pub struct QSearchMoveList {
 }
 
 impl QSearchMoveList {
-    pub fn new(board: &Board) -> Self {
+    pub fn new<H>(board: &Board, searcher: &Searcher<H>) -> Self {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());
@@ -239,8 +228,8 @@ impl QSearchMoveList {
                 if eval < Eval::ZERO {
                     continue;
                 }
-                let mvv_lva_score = MvvLvaScore::new(board, mv);
-                move_list.push((mv, MoveScore::Capture(eval, mvv_lva_score)));
+                let history = searcher.data.capture_history.get(board, mv);
+                move_list.push((mv, MoveScore::Capture(eval, history)));
             }
             false
         });
