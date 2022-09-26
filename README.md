@@ -27,7 +27,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - Move ordering
     - Hash move
     - Capture moves
-        - Sorted with static exchange evaluation with MVV-LVA for tiebreaks
+        - Sorted with static exchange evaluation with capture history for tiebreaks
         - Losing captures delayed to last
     - Killer moves
     - History heuristic
