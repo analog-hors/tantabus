@@ -1,6 +1,8 @@
 use cozy_chess::*;
 use arrayvec::ArrayVec;
 
+use crate::eval::Eval;
+
 use super::search::{KillerEntry, Searcher, KILLER_ENTRIES};
 
 mod see;
@@ -18,7 +20,6 @@ pub enum MoveScore {
     Quiet(i32),
     Killer,
     Capture(i32),
-    WinningCapture(i32),
     Pv
 }
 
@@ -34,7 +35,7 @@ enum MoveGenStage {
     Finished
 }
 
-fn swap_max_move_to_front(moves: &mut [ScoredMove]) -> Option<&ScoredMove> {
+fn swap_max_move_to_front<S: Ord>(moves: &mut [(Move, S)]) -> Option<&(Move, S)> {
     let max_index = moves
         .iter()
         .enumerate()
@@ -147,11 +148,7 @@ impl<'b> MoveList<'b> {
                         for mv in capture_moves {
                             let history = searcher.data.capture_history.get(self.data.board, mv);
                             if static_exchange_evaluation_at_least::<0>(self.data.board, mv) {
-                                if static_exchange_evaluation_at_least::<1>(self.data.board, mv) {
-                                    captures.push((mv, MoveScore::WinningCapture(history)));
-                                } else {
-                                    captures.push((mv, MoveScore::Capture(history)));
-                                }
+                                captures.push((mv, MoveScore::Capture(history)));
                             } else {
                                 losing_captures.push((mv, MoveScore::LosingCapture(history)));
                             }
@@ -209,12 +206,12 @@ impl<'b> MoveList<'b> {
 }
 
 pub struct QSearchMoveList {
-    move_list: ArrayVec<ScoredMove, MAX_CAPTURES>,
+    move_list: ArrayVec<(Move, Eval), MAX_CAPTURES>,
     yielded: usize
 }
 
 impl QSearchMoveList {
-    pub fn new<H>(board: &Board, searcher: &Searcher<H>) -> Self {
+    pub fn new(board: &Board) -> Self {
         let mut move_list = ArrayVec::new();
 
         let their_pieces = board.colors(!board.side_to_move());
@@ -225,15 +222,11 @@ impl QSearchMoveList {
                 // CITE: This use of SEE in quiescence and pruning moves with
                 // negative SEE was implemented based on a chessprogramming.org page.
                 // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
-                if !static_exchange_evaluation_at_least::<0>(board, mv) {
+                let eval = static_exchange_evaluation(board, mv);
+                if eval < Eval::ZERO {
                     continue;
                 }
-                let history = searcher.data.capture_history.get(board, mv);
-                if static_exchange_evaluation_at_least::<1>(board, mv) {
-                    move_list.push((mv, MoveScore::WinningCapture(history)));
-                } else {
-                    move_list.push((mv, MoveScore::Capture(history)));
-                }
+                move_list.push((mv, eval));
             }
             false
         });
@@ -243,12 +236,11 @@ impl QSearchMoveList {
         }
     }
 
-    pub fn pick(&mut self) -> Option<(usize, ScoredMove)> {
+    pub fn pick(&mut self) -> Option<Move> {
         let to_yield = &mut self.move_list[self.yielded..];
-        if let Some(&result) = swap_max_move_to_front(to_yield) {
-            let index = self.yielded;
+        if let Some(&(mv, _)) = swap_max_move_to_front(to_yield) {
             self.yielded += 1;
-            return Some((index, result));
+            return Some(mv);
         }
         None
     }

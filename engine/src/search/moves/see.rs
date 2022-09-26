@@ -19,7 +19,7 @@ const NO_THRESHOLD: i16 = i16::MIN;
 
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
-pub fn _static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
+pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
     inner_see::<NO_THRESHOLD>(board, capture)
 }
 

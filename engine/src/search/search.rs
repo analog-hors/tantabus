@@ -421,8 +421,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 return best_eval;
             }
 
-            let mut move_list = QSearchMoveList::new(pos.board(), self);
-            while let Some((_, (mv, _))) = move_list.pick() {
+            let mut move_list = QSearchMoveList::new(pos.board());
+            while let Some(mv) = move_list.pick() {
                 let child = pos.play_unchecked(mv);
                 let eval = -self.quiescence(
                     &child,
