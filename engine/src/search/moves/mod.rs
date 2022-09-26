@@ -229,7 +229,11 @@ impl QSearchMoveList {
                     continue;
                 }
                 let history = searcher.data.capture_history.get(board, mv);
-                move_list.push((mv, MoveScore::Capture(history)));
+                if static_exchange_evaluation_at_least::<1>(board, mv) {
+                    move_list.push((mv, MoveScore::WinningCapture(history)));
+                } else {
+                    move_list.push((mv, MoveScore::Capture(history)));
+                }
             }
             false
         });
