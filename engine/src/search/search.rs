@@ -87,7 +87,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             stats: SearchStats::default(),
         };
 
-        let mut windows = [75, 100].iter().copied().map(Eval::cp);
+        let mut windows = [75, 125].iter().copied().map(Eval::cp);
         let eval = loop {
             // CITE: Aspiration window.
             // https://www.chessprogramming.org/Aspiration_Windows
