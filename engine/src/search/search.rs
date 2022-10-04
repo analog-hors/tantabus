@@ -87,37 +87,52 @@ impl<H: SearchHandler> Searcher<'_, H> {
             stats: SearchStats::default(),
         };
 
-        let mut windows = [25].iter().copied().map(Eval::cp);
-        let eval = loop {
-            // CITE: Aspiration window.
-            // https://www.chessprogramming.org/Aspiration_Windows
-            let mut aspiration_window = Window::INFINITY;
-            if depth > 3 {
-                if let Some(prev_eval) = prev_eval {
-                    if let Some(bounds) = windows.next() {
-                        aspiration_window = Window::around(prev_eval, bounds);
-                    }
-                }
-            }
+        // CITE: Aspiration window.
+        // https://www.chessprogramming.org/Aspiration_Windows
+        let mut window = match prev_eval {
+            Some(p) if depth > 3 => Window::around(p, Eval::cp(25)),
+            _ => Window::INFINITY
+        };
+        let mut aspiration_bounds = [50].iter().copied().map(Eval::cp);
+        loop {
             let eval = searcher.search_node(
                 Node::Root,
                 pos,
                 depth,
                 0,
-                aspiration_window
+                window
             );
+
             match eval {
-                Ok(eval) if aspiration_window.contains(eval) => break Ok(eval),
-                Err(e) => break Err(e),
-                _ => continue
+                // Fail low
+                Ok(eval) if eval <= window.alpha => {
+                    let change = aspiration_bounds.next().unwrap_or(Eval::MAX);
+                    window.alpha = window.alpha.saturating_sub(change);
+                    // Mate score, use full window
+                    if eval.as_cp().is_none() {
+                        window = Window::INFINITY;
+                    }
+                }
+                // Fail high
+                Ok(eval) if eval >= window.beta => {
+                    let change = aspiration_bounds.next().unwrap_or(Eval::MAX);
+                    window.beta = window.beta.saturating_add(change);
+                    // Mate score, use full window
+                    if eval.as_cp().is_none() {
+                        window = Window::INFINITY;
+                    }
+                }
+                // In the window
+                Ok(eval) => {
+                    let result = SearcherResult {
+                        mv: searcher.search_result.unwrap(),
+                        eval
+                    };
+                    return (Ok(result), searcher.stats);
+                }
+                Err(err) => return (Err(err), searcher.stats)
             }
-        };
-        let result = eval.map(|eval| SearcherResult {
-            mv: searcher.search_result.unwrap(),
-            eval
-        });
-        
-        (result, searcher.stats)
+        }
     }
 
     // CITE: The base of this engine is built on principal variation search.
