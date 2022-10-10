@@ -104,7 +104,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 pos,
                 depth,
                 0,
-                aspiration_window
+                aspiration_window,
+                None
             );
             match eval {
                 Ok(eval) if aspiration_window.contains(eval) => break Ok(eval),
@@ -128,7 +129,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
         pos: &Position,
         mut depth: u8,
         ply_index: u8,
-        mut window: Window
+        mut window: Window,
+        skip_move: Option<Move>
     ) -> Result<Eval, ()> {
         self.data.game_history.push(pos.board().hash());
         let result = (|| {
@@ -232,7 +234,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         &child,
                         (depth - 1).saturating_sub(reduction),
                         ply_index + 1,
-                        -window
+                        -window,
+                        None
                     )?;
                     window.narrow_alpha(eval);
                     if window.empty() {
@@ -270,6 +273,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         continue;
                     }
                 }
+
+                if skip_move == Some(mv) {
+                    continue;
+                }
+
                 let child = pos.play_unchecked(mv);
                 self.shared.cache_table.prefetch(child.board());
                 let gives_check = !child.board().checkers().is_empty();
@@ -290,6 +298,40 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 } else {
                     window.null_window_alpha()
                 };
+
+                let mut extension = 0;
+                if let Some(entry) = &cache_entry {
+                    let test_singular = depth >= self.shared.search_params.sex_min_depth()
+                        && entry.best_move == mv
+                        && entry.eval.as_cp().is_some()
+                        && entry.depth + 2 >= depth
+                        && matches!(entry.kind, CacheDataKind::LowerBound | CacheDataKind::Exact);
+                    if test_singular {
+                        let reduction = self.shared.search_params.sex_reduction(depth);
+                        let margin = self.shared.search_params.sex_margin(reduction);
+
+                        let singular_beta = entry.eval.saturating_sub(margin); 
+                        let mut window = Window {
+                            alpha: singular_beta - Eval::UNIT,
+                            beta: singular_beta
+                        };
+
+                        let eval = self.search_node(
+                            Node::Normal,
+                            pos,
+                            (depth - 1).saturating_sub(reduction),
+                            ply_index,
+                            window,
+                            Some(mv)
+                        )?;
+                        window.narrow_alpha(eval);
+                        // Every single move failed to beat the singular beta, so this move is singular.
+                        if !window.empty() {
+                            extension += 1;
+                        }
+                    }
+                }
+
                 let mut reduction = 0;
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
@@ -300,9 +342,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let mut eval = -self.search_node(
                     child_node_type,
                     &child,
-                    (depth - 1).saturating_sub(reduction),
+                    (depth - 1 + extension).saturating_sub(reduction),
                     ply_index + 1,
-                    -child_window
+                    -child_window,
+                    None
                 )?;
                 if (child_window != window || reduction > 0) && window.contains(eval) {
                     child_window = window;
@@ -312,7 +355,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         &child,
                         depth - 1,
                         ply_index + 1,
-                        -child_window
+                        -child_window,
+                        None
                     )?;
                 }
 
@@ -355,26 +399,28 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     break;
                 }
             }
-            let best_move = best_move.unwrap();
 
-            self.shared.cache_table.set(pos.board(), ply_index, CacheData {
-                kind: match best_eval {
-                    // No move was capable of raising alpha.
-                    // The actual value might be worse than this.
-                    _ if best_eval <= init_window.alpha => CacheDataKind::UpperBound,
-                    // The move was too good and this is a cut node.
-                    // The value might be even better if it were not cut off.
-                    _ if best_eval >= window.beta => CacheDataKind::LowerBound,
-                    // It's in the window. This is an exact value.
-                    _ => CacheDataKind::Exact
-                },
-                eval: best_eval,
-                depth,
-                best_move
-            });
-
-            if node == Node::Root {
-                self.search_result = Some(best_move);
+            if skip_move.is_none() {
+                let best_move = best_move.unwrap();
+                self.shared.cache_table.set(pos.board(), ply_index, CacheData {
+                    kind: match best_eval {
+                        // No move was capable of raising alpha.
+                        // The actual value might be worse than this.
+                        _ if best_eval <= init_window.alpha => CacheDataKind::UpperBound,
+                        // The move was too good and this is a cut node.
+                        // The value might be even better if it were not cut off.
+                        _ if best_eval >= window.beta => CacheDataKind::LowerBound,
+                        // It's in the window. This is an exact value.
+                        _ => CacheDataKind::Exact
+                    },
+                    eval: best_eval,
+                    depth,
+                    best_move
+                });
+                
+                if node == Node::Root {
+                    self.search_result = Some(best_move);
+                }
             }
 
             Ok(best_eval)

@@ -50,6 +50,11 @@ define_params! {
         base_margin: i16 = 30;
         max_depth: u8 = 4;
     }
+    sex = SexParams { // owo
+        min_depth: u8 = 3;
+        reduction_div: u8 = 2;
+        margin_factor: i16 = 10;
+    }
 }
 
 struct Lut2d<T, const I: usize, const J: usize> {
@@ -131,5 +136,17 @@ impl SearchParamHandler {
         } else {
             None
         }
+    }
+
+    pub fn sex_min_depth(&self) -> u8 {
+        self.params.sex.min_depth
+    }
+
+    pub fn sex_reduction(&self, depth: u8) -> u8 {
+        depth / self.params.sex.reduction_div
+    }
+
+    pub fn sex_margin(&self, reduction: u8) -> Eval {
+        Eval::cp(reduction as i16 * self.params.sex.margin_factor)
     }
 }
