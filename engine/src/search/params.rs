@@ -53,7 +53,7 @@ define_params! {
     sex = SexParams { // owo
         min_depth: u8 = 3;
         reduction_div: u8 = 2;
-        margin_factor: i16 = 10;
+        margin_factor: i16 = 50;
     }
 }
 
