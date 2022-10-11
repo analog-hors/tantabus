@@ -50,7 +50,35 @@ pub struct ExtractPositionsConfig {
 
     /// Max absolute eval to be included
     #[clap(long, default_value_t = 20_000)]
-    max_eval: i16
+    max_eval: i16,
+
+    /// Enable cp prescaling
+    #[clap(long, default_value_t = false)]
+    prescaling: bool,
+
+    /// Initial WDL weight when prescaling eval
+    #[clap(long, default_value_t = 0.0)]
+    eval_wdl_prescaling_begin: f32,
+
+    /// Final WDL weight when prescaling eval
+    #[clap(long, default_value_t = 0.0)]
+    eval_wdl_prescaling_end: f32,
+
+    /// Eval scale factor for WDL conversion
+    #[clap(long, default_value_t = 115.0)]
+    eval_scale: f32
+}
+
+fn cp_to_wdl(cp: f32, scale: f32) -> f32 {
+    1.0 / (1.0 + (-cp / scale).exp())
+}
+
+fn wdl_to_cp(wdl: f32, scale: f32) -> f32 {
+    -scale * (1.0 / wdl - 1.0).ln()
+}
+
+fn lerp(a: f32, b: f32, i: f32) -> f32 {
+    a * (1.0 - i) + b * i
 }
 
 pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<AtomicBool>) {
@@ -75,7 +103,7 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
             if i < game.opening_moves as usize {
                 continue;
             }
-            let cp = match game.evals[i - game.opening_moves as usize].as_cp() {
+            let mut cp = match game.evals[i - game.opening_moves as usize].as_cp() {
                 Some(cp) => cp,
                 None => continue,
             };
@@ -92,6 +120,25 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
 
             if cp.abs() > config.max_eval {
                 continue;
+            }
+
+            if config.prescaling {
+                let index = i - game.opening_moves as usize;
+                let total = game.moves.len() - 1 - game.opening_moves as usize;
+                
+                let cp_wdl = cp_to_wdl(cp as f32, config.eval_scale);
+                let wdl = match game.winner {
+                    Some(Color::White) => 1.0,
+                    Some(Color::Black) => 0.0,
+                    None => 0.5,
+                };
+                let wdl_weight = lerp(
+                    config.eval_wdl_prescaling_begin,
+                    config.eval_wdl_prescaling_end,
+                    index as f32 / total as f32
+                );
+                let cp_wdl = lerp(cp_wdl, wdl, wdl_weight);
+                cp = wdl_to_cp(cp_wdl, config.eval_scale).round() as i16;
             }
 
             samples.push((board, cp));
