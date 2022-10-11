@@ -40,7 +40,7 @@ impl<const INPUTS: usize, const OUTPUTS: usize> BitLinear<INPUTS, OUTPUTS> {
 }
 
 fn dot_product<const LEN: usize>(vec: &[LinearI; LEN], other: &[LinearW; LEN]) -> LinearB {
-    #[cfg(target_feature = "avx2")] {
+    #[cfg(all(target_feature = "avx2", not(debug_assertions)))] {
         use std::arch::x86_64::*;
 
         const VEC_SIZE: usize = std::mem::size_of::<__m256i>() / std::mem::size_of::<LinearI>();
