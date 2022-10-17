@@ -168,7 +168,7 @@ fn main() {
     
     let mut position: Option<(Board, Vec<Move>)> = None;
     let mut search = None;
-    let mut cache_table = None;
+    let mut cache_table: Option<CacheTable> = None;
 
     let mut options = UciOptionsHandler::new();
 
@@ -204,20 +204,39 @@ fn main() {
                 UciMessage::UciNewGame => cache_table = None,
     
                 UciMessage::Position { fen, moves, .. } => {
-                    let board: Board = fen
+                    let init_pos: Board = fen
                         .map(|fen| {
                             Board::from_fen(fen.as_str(), options.options.chess960)
                                 .unwrap()
                         })
                         .unwrap_or_default();
                     let mut converted_moves = Vec::new();
-                    let mut current_pos = board.clone();
+                    let mut current_pos = init_pos.clone();
                     for mv in moves {
                         let mv = mv.uci_move_into(&current_pos, options.options.chess960);
                         current_pos.play_unchecked(mv);
                         converted_moves.push(mv);
                     }
-                    position = Some((board, converted_moves));
+
+                    if let Some((prev_init_pos, prev_moves)) = position {
+                        if init_pos == prev_init_pos {
+                            let mut is_continuation = true;
+                            for (i, mv) in converted_moves.iter().enumerate() {
+                                if Some(mv) != prev_moves.get(i) {
+                                    is_continuation = false;
+                                    break;
+                                }
+                            }
+                            if is_continuation {
+                                let plies_since = converted_moves.len() - prev_moves.len();
+                                if let Some(cache_table) = &mut cache_table {
+                                    cache_table.age_by(plies_since as u8);
+                                }
+                            }
+                        }
+                    }
+
+                    position = Some((init_pos, converted_moves));
                 }
                 UciMessage::Go { time_control, search_control } => {
                     let time_manager = match time_control {

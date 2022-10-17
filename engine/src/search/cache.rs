@@ -17,19 +17,55 @@ pub struct CacheData {
     pub kind: CacheDataKind,
     pub eval: Eval,
     pub depth: u8,
-    pub best_move: Move
+    pub best_move: Move,
+    pub age: u8
+}
+
+impl CacheData {
+    fn marshall(&self) -> EncodedCacheData {
+        EncodedCacheData {
+            kind: self.kind as u8,
+            eval: self.eval.to_bytes(),
+            depth: self.depth,
+            best_move_from: self.best_move.from as u8,
+            best_move_to: self.best_move.to as u8,
+            best_move_promotion: self.best_move.promotion.map_or(u8::MAX, |p| p as u8),
+            age: 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
-struct EncodedEntry {
+struct EncodedCacheData {
     kind: u8,
     eval: [u8; 2],
     depth: u8,
     best_move_from: u8,
     best_move_to: u8,
     best_move_promotion: u8,
-    _padding: u8
+    age: u8
+}
+
+impl EncodedCacheData {
+    fn unmarshall(&self) -> CacheData {
+        CacheData {
+            kind: match self.kind {
+                0 => CacheDataKind::Exact,
+                1 => CacheDataKind::LowerBound,
+                2 => CacheDataKind::UpperBound,
+                _ => unreachable!()
+            },
+            eval: Eval::from_bytes(self.eval),
+            depth: self.depth,
+            best_move: Move {
+                from: Square::index(self.best_move_from as usize),
+                to: Square::index(self.best_move_to as usize),
+                promotion: Piece::try_index(self.best_move_promotion as usize)
+            },
+            age: self.age
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -49,44 +85,6 @@ impl CacheEntry {
     fn is_empty(&self) -> bool {
         self.data.load(Ordering::Acquire) == 0
     }
-
-    fn store(&self, hash: u64, entry: CacheData) {
-        let data = bytemuck::cast(EncodedEntry {
-            kind: entry.kind as u8,
-            eval: entry.eval.to_bytes(),
-            depth: entry.depth,
-            best_move_from: entry.best_move.from as u8,
-            best_move_to: entry.best_move.to as u8,
-            best_move_promotion: entry.best_move.promotion.map_or(u8::MAX, |p| p as u8),
-            _padding: 0,
-        });
-        self.hash_xor_data.store(hash ^ data, Ordering::Relaxed);
-        self.data.store(data, Ordering::Relaxed);
-    }
-
-    fn load(&self, hash: u64) -> Option<CacheData> {
-        let hash_xor_data = self.hash_xor_data.load(Ordering::Relaxed);
-        let data = self.data.load(Ordering::Relaxed);
-        if data == 0 || hash_xor_data ^ data != hash {
-            return None;
-        }
-        let data: EncodedEntry = bytemuck::cast(data);
-        Some(CacheData {
-            kind: match data.kind {
-                0 => CacheDataKind::Exact,
-                1 => CacheDataKind::LowerBound,
-                2 => CacheDataKind::UpperBound,
-                _ => unreachable!()
-            },
-            eval: Eval::from_bytes(data.eval),
-            depth: data.depth,
-            best_move: Move {
-                from: Square::index(data.best_move_from as usize),
-                to: Square::index(data.best_move_to as usize),
-                promotion: Piece::try_index(data.best_move_promotion as usize)
-            },
-        })
-    }
 }
 
 // CITE: Transposition table.
@@ -94,6 +92,7 @@ impl CacheEntry {
 #[derive(Debug)]
 pub struct CacheTable {
     table: Box<[CacheEntry]>,
+    age: u8
 }
 
 #[derive(Debug)]
@@ -106,7 +105,8 @@ impl CacheTable {
     /// Create a cache table with a given number of entries.
     pub fn new_with_entries(entries: NonZeroU32) -> Self {
         Self {
-            table: (0..entries.get()).map(|_| CacheEntry::empty()).collect()
+            table: (0..entries.get()).map(|_| CacheEntry::empty()).collect(),
+            age: 0
         }
     }
 
@@ -125,68 +125,84 @@ impl CacheTable {
         Ok(Self::new_with_entries(entries))
     }
 
-    fn hash_to_index(&self, hash: u64) -> usize {
+    fn entry(&self, board: &Board) -> &CacheEntry {
         // CITE: This reduction scheme was first observed in Stockfish,
         // who implemented it after a blog post by Daniel Lemire.
         // https://github.com/official-stockfish/Stockfish/commit/2198cd0524574f0d9df8c0ec9aaf14ad8c94402b
         // https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
-        ((hash as u32 as u64 * self.capacity() as u64) >> u32::BITS) as usize
+        let hash = board.hash() as u32;
+        let index = (hash as u64 * self.capacity() as u64) >> u32::BITS;
+        &self.table[index as usize]
     }
 
     pub fn prefetch(&self, board: &Board) {
-        let index = self.hash_to_index(board.hash());
-        let entry = &self.table[index];
         #[cfg(target_arch = "x86_64")]
         unsafe {
             use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
-            _mm_prefetch(entry as *const _ as *const _, _MM_HINT_T0);
+            _mm_prefetch(self.entry(board) as *const _ as *const _, _MM_HINT_T0);
         }
-        let _ = entry;
     }
 
     pub fn get(&self, board: &Board, ply_index: u8) -> Option<CacheData> {
-        let hash = board.hash();
-        let index = self.hash_to_index(hash);
-        if let Some(mut data) = self.table[index].load(hash) {
-            data.eval = match data.eval.kind() {
-                EvalKind::Centipawn(_) => data.eval,
-                // Mate scores can sometimes get really big.
-                // I'm not sure why this happens.
-                // Ethereal seems to have had a similar problem at some point.
-                // It seems related to bad interactions with "unresolved" mates and TT grafting.
-                // Scores seem to be stored as large, inexact bounds.
-                // In any case, for now, this ignores it by turning it into a high eval instead of a mate score.
-                EvalKind::MateIn(p) => {
-                    let p = p as u32 + ply_index as u32;
-                    if p <= u8::MAX as u32 {
-                        Eval::mate_in(p as u8)
-                    } else {
-                        Eval::cp((20000 - p - u8::MAX as u32) as i16)
-                    }
-                },
-                EvalKind::MatedIn(p) => {
-                    let p = p as u32 + ply_index as u32;
-                    if p <= u8::MAX as u32 {
-                        Eval::mated_in(p as u8)
-                    } else {
-                        Eval::cp(-((20000 - p - u8::MAX as u32) as i16))
-                    }
-                },
-            };
-            return Some(data);
+        let entry = self.entry(board);
+
+        let data = entry.data.load(Ordering::Relaxed);
+        let hash = entry.hash_xor_data.load(Ordering::Relaxed) ^ data;
+        if data == 0 || hash != board.hash() {
+            return None;
         }
-        None
+        let data: EncodedCacheData = bytemuck::cast(data);
+        let mut data = data.unmarshall();
+
+        data.eval = match data.eval.kind() {
+            EvalKind::Centipawn(_) => data.eval,
+            // Mate scores can sometimes get really big.
+            // I'm not sure why this happens.
+            // Ethereal seems to have had a similar problem at some point.
+            // It seems related to bad interactions with "unresolved" mates and TT grafting.
+            // Scores seem to be stored as large, inexact bounds.
+            // In any case, for now, this ignores it by turning it into a high eval instead of a mate score.
+            EvalKind::MateIn(p) => {
+                let p = p as u32 + ply_index as u32;
+                if p <= u8::MAX as u32 {
+                    Eval::mate_in(p as u8)
+                } else {
+                    Eval::cp((20000 - p - u8::MAX as u32) as i16)
+                }
+            }
+            EvalKind::MatedIn(p) => {
+                let p = p as u32 + ply_index as u32;
+                if p <= u8::MAX as u32 {
+                    Eval::mated_in(p as u8)
+                } else {
+                    Eval::cp(-((20000 - p - u8::MAX as u32) as i16))
+                }
+            }
+        };
+        Some(data)
     }
 
-    pub fn set(&self, board: &Board, ply_index: u8, mut entry: CacheData) {
-        entry.eval = match entry.eval.kind() {
-            EvalKind::Centipawn(_) => entry.eval,
+    pub fn set(&self, board: &Board, ply_index: u8, mut data: CacheData) {
+        data.eval = match data.eval.kind() {
+            EvalKind::Centipawn(_) => data.eval,
             EvalKind::MateIn(p) => Eval::mate_in(p - ply_index),
             EvalKind::MatedIn(p) => Eval::mated_in(p - ply_index),
         };
-        let hash = board.hash();
-        let index = self.hash_to_index(hash);
-        self.table[index].store(hash, entry);
+        
+        let entry = self.entry(board);
+        let prev_data = entry.data.load(Ordering::Relaxed);
+        let prev_hash = entry.hash_xor_data.load(Ordering::Relaxed) ^ prev_data;
+        let prev_data: EncodedCacheData = bytemuck::cast(prev_data);
+    
+        let same_position = board.hash() == prev_hash;
+        let at_least_as_deep = data.depth >= prev_data.depth;
+        let replaces_stale = self.age.wrapping_sub(prev_data.age) >= 2;
+
+        if same_position || at_least_as_deep || replaces_stale {
+            let data = bytemuck::cast(data.marshall());
+            entry.data.store(data, Ordering::Relaxed);
+            entry.hash_xor_data.store(board.hash() ^ data, Ordering::Relaxed);
+        }
     }
 
     pub fn capacity(&self) -> u32 {
@@ -201,5 +217,9 @@ impl CacheTable {
         for entry in self.table.iter_mut() {
             *entry = CacheEntry::empty();
         }
+    }
+
+    pub fn age_by(&mut self, plies: u8) {
+        self.age = self.age.wrapping_add(plies);
     }
 }

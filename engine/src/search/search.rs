@@ -370,7 +370,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 },
                 eval: best_eval,
                 depth,
-                best_move
+                best_move,
+                age: 0
             });
 
             if node == Node::Root {
