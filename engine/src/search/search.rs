@@ -293,7 +293,11 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 let mut reduction = 0;
                 // CITE: Late move reductions.
                 // https://www.chessprogramming.org/Late_Move_Reductions
-                if depth >= self.shared.search_params.lmr_min_depth() && is_quiet && !in_check && !gives_check {
+                if depth >= self.shared.search_params.lmr_min_depth()
+                    && is_quiet
+                    && !matches!(move_score, MoveScore::Killer)
+                    && !in_check
+                    && !gives_check {
                     let history = self.data.quiet_history.get(pos.board(), mv);
                     reduction += self.shared.search_params.lmr_reduction(i, depth, history);
                 }
