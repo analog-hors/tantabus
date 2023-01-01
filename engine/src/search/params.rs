@@ -34,9 +34,8 @@ define_params! {
         history_reduction_div: i32 = 210;
     }
     nmp = NmpParams {
-        base_reduction: u8 = 3;
-        bonus_reduction: u8 = 1;
-        bonus_reduction_depth: u8 = 7;
+        base_reduction: u8 = 2;
+        div_reduction_divisor: u8 = 3;
         margin_div: i32 = 90;
         margin_max_reduction: u8 = 2;
     }
@@ -99,10 +98,7 @@ impl SearchParamHandler {
 
     pub fn nmp_reduction(&self, depth: u8, static_eval: Eval, window: Window) -> u8 {
         let nmp = &self.params.nmp;
-        let mut reduction = nmp.base_reduction;
-        if depth >= nmp.bonus_reduction_depth {
-            reduction += nmp.bonus_reduction;
-        }
+        let mut reduction = nmp.base_reduction + depth / nmp.div_reduction_divisor;
         if let (Some(eval), Some(beta)) = (static_eval.as_cp(), window.beta.as_cp()) {
             if eval >= beta {
                 // CITE: This kind of reduction increase when eval >= beta was first observed in MadChess.
