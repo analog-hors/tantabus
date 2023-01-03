@@ -221,9 +221,10 @@ impl<H: SearchHandler> Searcher<'_, H> {
             // The idea for doing it only when static_eval >= beta was
             // first suggested to me by the Black Marlin author.
             // https://www.chessprogramming.org/Null_Move_Pruning
-            let do_nmp = static_eval >= window.beta
+            let do_nmp = !matches!(node, Node::Root | Node::Pv)
+                && static_eval >= window.beta
                 && !(our_pieces & sliding_pieces).is_empty();
-            if node != Node::Root && do_nmp {
+            if do_nmp {
                 if let Some(child) = pos.null_move() {
                     let mut window = window.null_window_beta();
                     let reduction = self.shared.search_params.nmp_reduction(depth, static_eval, window);
