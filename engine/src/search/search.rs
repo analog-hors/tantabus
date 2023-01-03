@@ -258,7 +258,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             } else {
                 false
             };
-            let mut quiets_to_check = self.shared.search_params.lmp_quiets_to_check(depth);
+            let mut quiets_to_check = self.shared.search_params.lmp_quiets_to_check(depth, node);
             while let Some((i, (mv, move_score))) = moves.pick(self) {
                 // CITE: Late move pruning.
                 // We check only a certain number of quiets per node given some depth.

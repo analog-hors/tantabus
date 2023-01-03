@@ -1,6 +1,7 @@
 use crate::eval::Eval;
 
 use super::window::Window;
+use super::search::Node;
 
 macro_rules! define_params {
     ($($name:ident = $params_name:ident {
@@ -114,7 +115,11 @@ impl SearchParamHandler {
         reduction
     }
 
-    pub fn lmp_quiets_to_check(&self, depth: u8) -> usize {
+    pub fn lmp_quiets_to_check(&self, depth: u8, node: Node) -> usize {
+        if node == Node::Pv {
+            return 255;
+        }
+
         *self.params.lmp.quiets_to_check.get(depth as usize - 1)
             .unwrap_or(&usize::MAX)
     }
