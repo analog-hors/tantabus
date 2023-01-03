@@ -415,6 +415,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
+            // The assumption is that some other unknown move will
+            // have a value of approximately the static evaluation.
+            let mut best_move = None;
             let mut best_eval = pos.evaluate();
             window.narrow_alpha(best_eval);
             if window.empty() {
@@ -431,6 +434,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 );
 
                 if eval > best_eval {
+                    best_move = Some(mv);
                     best_eval = eval;
                 }
 
@@ -438,6 +442,21 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 if window.empty() {
                     break;
                 }
+            }
+
+            if let Some(best_move) = best_move {
+                // Since alpha needs to be raised for there to be a best move,
+                // it has to either be a lower bound or an exact score.
+                self.shared.cache_table.set(pos.board(), ply_index, CacheData {
+                    kind: if best_eval >= window.beta {
+                        CacheDataKind::LowerBound
+                    } else {
+                        CacheDataKind::Exact
+                    },
+                    eval: best_eval,
+                    depth: 0,
+                    best_move
+                });
             }
 
             best_eval
