@@ -34,8 +34,8 @@ define_params! {
         history_reduction_div: i32 = 210;
     }
     nmp = NmpParams {
-        base_reduction: u8 = 2;
-        div_reduction_divisor: u8 = 3;
+        base_reduction: u8 = 3;
+        div_reduction_divisor: u8 = 4;
         margin_div: i32 = 90;
         margin_max_reduction: u8 = 2;
     }
