@@ -42,7 +42,7 @@ define_params! {
         margin_max_reduction: u8 = 2;
     }
     lmp = LmpParams {
-        quiets_to_check: [usize; 3] = [5, 6, 15];
+        quiets_to_check: [usize; 3] = [6, 7, 16];
     }
     fp = FpParams {
         margins: [i16; 2] = [293, 620];
@@ -116,7 +116,7 @@ impl SearchParamHandler {
     }
 
     pub fn lmp_quiets_to_check(&self, depth: u8, node: Node) -> usize {
-        if node == Node::Pv {
+        if matches!(node, Node::Root | Node::Pv) {
             return 255;
         }
 
