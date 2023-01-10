@@ -39,7 +39,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 ### Evaluation
 - HCE
     - No longer exists, used to train NNUE
-    - [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://drive.google.com/file/d/1GfrNuDfD9Le-ZKKLxTHu0i3z6fbTn8JJ/view?usp=sharing)
+    - [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://cdn.discordapp.com/attachments/936829036104142848/1014793028042510346/lichess-big3-resolved.7z)
     - King relative symmetric piece-square tables
         - Dedicated passed pawn tables
     - Mobility evaluation (simple pseudo-legal counting)
