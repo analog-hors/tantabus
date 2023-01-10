@@ -18,6 +18,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - Reductions
     - Late move reductions
     - History reductions
+    - Internal iterative reductions
 - Pruning
     - Null move pruning
     - Futility pruning

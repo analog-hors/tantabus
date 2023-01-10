@@ -186,6 +186,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
                         return Ok(entry.eval);
                     }
                 }
+            } else {
+                depth -= self.shared.search_params.iir_reduction(depth);
             }
 
             let static_eval = cache_entry
