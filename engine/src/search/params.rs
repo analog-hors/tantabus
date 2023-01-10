@@ -49,6 +49,10 @@ define_params! {
         base_margin: i16 = 30;
         max_depth: u8 = 4;
     }
+    iir = IirParams {
+        min_depth: u8 = 4;
+        reduction: u8 = 1;
+    }
 }
 
 struct Lut2d<T, const I: usize, const J: usize> {
@@ -126,6 +130,14 @@ impl SearchParamHandler {
             Some(Eval::cp(rfp.base_margin * depth as i16))
         } else {
             None
+        }
+    }
+
+    pub fn iir_reduction(&self, depth: u8) -> u8 {
+        if depth >= self.params.iir.min_depth {
+            self.params.iir.reduction
+        } else {
+            0
         }
     }
 }
