@@ -16,6 +16,7 @@ use partition::*;
 // https://www.chessprogramming.org/Move_Ordering
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
+    UnderPromotion,
     LosingCapture(Eval, i32),
     Quiet(i32),
     Killer,
@@ -32,6 +33,7 @@ enum MoveGenStage {
     Killers,
     Quiets,
     LosingCaptures,
+    UnderPromotions,
     Finished
 }
 
@@ -68,6 +70,7 @@ pub struct MoveList<'b> {
     killers: Option<Partition>,
     quiets: Option<Partition>,
     losing_captures: Option<Partition>,
+    underpromos: Option<Partition>
 }
 
 impl<'b> MoveList<'b> {
@@ -86,7 +89,8 @@ impl<'b> MoveList<'b> {
             dense_quiets: ArrayVec::new(),
             killers: None,
             quiets: None,
-            losing_captures: None
+            losing_captures: None,
+            underpromos: None
         }
     }
 
@@ -169,19 +173,23 @@ impl<'b> MoveList<'b> {
         if self.stage == MoveGenStage::Killers {
             if self.killers.is_none() {
                 let mut killers = ArrayVec::<_, KILLER_ENTRIES>::new();
+                let mut underpromos = ArrayVec::<_, {8 * 3}>::new();
                 self.quiets = Some(self.move_list.new_partition(|mut quiets| {
                     for &moves in &self.dense_quiets {
                         for mv in moves {
                             if self.data.killers.contains(&mv) {
                                 killers.push((mv, MoveScore::Killer));
-                            } else {
+                            } else if matches!(mv.promotion, None | Some(Piece::Queen)) {
                                 let history = searcher.data.quiet_history.get(self.data.board, mv);
                                 quiets.push((mv, MoveScore::Quiet(history)));
+                            } else {
+                                underpromos.push((mv, MoveScore::UnderPromotion));
                             }
                         }
                     }
                 }));
                 self.killers = Some(self.move_list.new_partition_from_slice(&killers));
+                self.underpromos = Some(self.move_list.new_partition_from_slice(&underpromos));
             }
             let killers = self.killers.as_mut().unwrap();
             if let Some(&result) = self.move_list.yield_from_partition(killers) {
@@ -199,6 +207,13 @@ impl<'b> MoveList<'b> {
         if self.stage == MoveGenStage::LosingCaptures {
             let losing_captures = self.losing_captures.as_mut().unwrap();
             if let Some(&result) = self.move_list.yield_from_partition(losing_captures) {
+                return Some(result);
+            }
+            self.stage = MoveGenStage::UnderPromotions;
+        }
+        if self.stage == MoveGenStage::UnderPromotions {
+            let underpromos = self.underpromos.as_mut().unwrap();
+            if let Some(&result) = self.move_list.yield_from_partition(underpromos) {
                 return Some(result);
             }
             self.stage = MoveGenStage::Finished;
