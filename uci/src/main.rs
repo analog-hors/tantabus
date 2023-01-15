@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use cozy_chess::*;
 use vampirc_uci::{UciFen, UciInfoAttribute, UciMessage, UciMove, UciPiece, UciSquare, UciTimeControl};
-use tantabus::eval::*;
+// use tantabus::eval::*;
 use tantabus::search::*;
 use tantabus::time::*;
 
@@ -326,11 +326,7 @@ fn main() {
                         current_pos.play_unchecked(mv);
                     }
                     send_message(UciMessage::Info(vec![
-                        match result.eval.kind() {
-                            EvalKind::Centipawn(cp) => UciInfoAttribute::from_centipawns(cp as i32),
-                            EvalKind::MateIn(m) => UciInfoAttribute::from_mate(((m + 1) / 2) as i8),
-                            EvalKind::MatedIn(m) => UciInfoAttribute::from_mate(-(((m + 1) / 2) as i8))
-                        },
+                        UciInfoAttribute::from_centipawns(100),
                         UciInfoAttribute::Depth(result.depth),
                         UciInfoAttribute::SelDepth(result.seldepth),
                         UciInfoAttribute::Nodes(result.nodes),
