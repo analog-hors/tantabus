@@ -92,8 +92,8 @@ impl<H: SearchHandler> Searcher<'_, H> {
             // CITE: Aspiration window.
             // https://www.chessprogramming.org/Aspiration_Windows
             let mut aspiration_window = Window::INFINITY;
-            if depth > 3 {
-                if let Some(prev_eval) = prev_eval {
+            if let Some(prev_eval) = prev_eval {
+                if prev_eval.as_cp().is_some() && depth > 3 {
                     if let Some(bounds) = windows.next() {
                         aspiration_window = Window::around(prev_eval, bounds);
                     }
@@ -130,6 +130,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         ply_index: u8,
         mut window: Window
     ) -> Result<Eval, ()> {
+        debug_assert!(window.alpha < window.beta);
         self.data.game_history.push(pos.board().hash());
         let result = (|| {
             self.stats.seldepth = self.stats.seldepth.max(ply_index);
