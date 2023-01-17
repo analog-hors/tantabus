@@ -18,7 +18,8 @@ mod marlinformat;
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum PositionFormat {
     MarlinFormat,
-    FenCpWdl
+    FenCpWdl,
+    DryRun
 }
 
 #[derive(Debug, Args)]
@@ -64,6 +65,8 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
     let mut in_file = BufReader::new(in_file);
     let mut out_file = BufWriter::new(out_file);
     let mut rng = Pcg64Mcg::new(0xcafef00dd15ea5e5);
+    let mut games = 0u64;
+    let mut positions = 0u64;
     while let Some(game) = read_analyzed_game(&mut in_file).unwrap() {
         let mut samples = Vec::new();
         // TODO better name
@@ -106,24 +109,28 @@ pub fn run_position_extraction(config: &ExtractPositionsConfig, abort: &Arc<Atom
 
         match config.format {
             PositionFormat::MarlinFormat => {
-                for (board, cp) in samples {
-                    write_as_marlinformat(&mut out_file, &board, cp, game.winner).unwrap();
+                for (board, cp) in &samples {
+                    write_as_marlinformat(&mut out_file, board, *cp, game.winner).unwrap();
                 }
             }
             PositionFormat::FenCpWdl => {
-                for (board, cp) in samples {
+                for (board, cp) in &samples {
                     let wdl = match game.winner {
                         Some(Color::White) => "1.0",
                         Some(Color::Black) => "0.0",
                         None => "0.5",
                     };
-                    writeln!(&mut out_file, "{} | {} | {}", board, cp, wdl).unwrap();
+                    writeln!(&mut out_file, "{} | {} | {}", &board, cp, wdl).unwrap();
                 }
             }
+            PositionFormat::DryRun => {}
         }
+        positions += samples.len() as u64;
+        games += 1;
 
         if abort.load(Ordering::SeqCst) {
             break;
         }
     }
+    eprintln!("Wrote {} positions extracted from {} games.", positions, games);
 }
