@@ -55,8 +55,7 @@ define_params! {
         reduction: u8 = 1;
     }
     see = SeeParams {
-        losing_capture_reduction_threshold: SeeScore = -200;
-        losing_capture_reduction: u8 = 2;
+        losing_capture_reduction_thresholds: [SeeScore; 2] = [-100, -200];
     }
 }
 
@@ -147,9 +146,14 @@ impl SearchParamHandler {
     }
 
     pub fn see_reduction(&self, score: SeeScore) -> u8 {
-        if score <= self.params.see.losing_capture_reduction_threshold {
-            return self.params.see.losing_capture_reduction;
+        let mut reduction = 0;
+        for &threshold in &self.params.see.losing_capture_reduction_thresholds {
+            if score <= threshold {
+                reduction += 1;
+            } else {
+                break;
+            }
         }
-        0
+        reduction
     }
 }
