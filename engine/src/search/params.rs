@@ -1,6 +1,7 @@
 use crate::eval::Eval;
 
 use super::window::Window;
+use super::moves::SeeScore;
 
 macro_rules! define_params {
     ($($name:ident = $params_name:ident {
@@ -54,7 +55,7 @@ define_params! {
         reduction: u8 = 1;
     }
     see = SeeParams {
-        losing_capture_reduction_threshold: i16 = -200;
+        losing_capture_reduction_threshold: SeeScore = -200;
         losing_capture_reduction: u8 = 2;
     }
 }
@@ -145,11 +146,9 @@ impl SearchParamHandler {
         }
     }
 
-    pub fn see_reduction(&self, score: Eval) -> u8 {
-        if let Some(score) = score.as_cp() {
-            if score <= self.params.see.losing_capture_reduction_threshold {
-                return self.params.see.losing_capture_reduction;
-            }
+    pub fn see_reduction(&self, score: SeeScore) -> u8 {
+        if score <= self.params.see.losing_capture_reduction_threshold {
+            return self.params.see.losing_capture_reduction;
         }
         0
     }

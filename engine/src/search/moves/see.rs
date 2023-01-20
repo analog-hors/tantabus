@@ -1,10 +1,10 @@
 use cozy_chess::*;
 use arrayvec::ArrayVec;
 
-use crate::eval::*;
+pub type SeeScore = i16;
 
-fn piece_value(piece: Piece) -> Eval {
-    Eval::cp(match piece {
+fn piece_value(piece: Piece) -> SeeScore {
+    match piece {
         Piece::Pawn => 100,
         Piece::Knight => 320,
         Piece::Bishop => 330,
@@ -12,12 +12,12 @@ fn piece_value(piece: Piece) -> Eval {
         Piece::Queen => 900,
         // King capture is legal in SEE's simulation of real chess.
         Piece::King => 20_000,
-    })
+    }
 }
 
 // CITE: Static exchange evaluation.
 // https://www.chessprogramming.org/Static_Exchange_Evaluation
-pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
+pub fn static_exchange_evaluation(board: &Board, capture: Move) -> SeeScore {
     use Piece::*;
 
     let target_sq = capture.to;
@@ -86,9 +86,9 @@ pub fn static_exchange_evaluation(board: &Board, capture: Move) -> Eval {
             let their_gain = gains.pop().unwrap();
             let our_gain = gains.last_mut().unwrap();
             *our_gain -= their_gain;
-            if !forced && *our_gain < Eval::ZERO {
+            if !forced && *our_gain < 0 {
                 // Choose not to make the capture.
-                *our_gain = Eval::ZERO;
+                *our_gain = 0;
             }
         }
         return gains.pop().unwrap();

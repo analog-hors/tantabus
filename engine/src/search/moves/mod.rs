@@ -1,8 +1,6 @@
 use cozy_chess::*;
 use arrayvec::ArrayVec;
 
-use crate::eval::*;
-
 use super::search::{KillerEntry, Searcher, KILLER_ENTRIES};
 
 mod see;
@@ -11,16 +9,18 @@ mod partition;
 use see::*;
 use partition::*;
 
+pub use see::SeeScore;
+
 // CITE: Move ordering.
 // This move ordering was originally derived from this page:
 // https://www.chessprogramming.org/Move_Ordering
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MoveScore {
     UnderPromotion,
-    LosingCapture(Eval, i32),
+    LosingCapture(SeeScore, i32),
     Quiet(i32),
     Killer,
-    Capture(Eval, i32),
+    Capture(SeeScore, i32),
     Pv
 }
 
@@ -153,7 +153,7 @@ impl<'b> MoveList<'b> {
                             let eval = static_exchange_evaluation(self.data.board, mv);
 
                             let history = searcher.data.capture_history.get(self.data.board, mv);
-                            if eval >= Eval::ZERO {
+                            if eval >= 0 {
                                 captures.push((mv, MoveScore::Capture(eval, history)));
                             } else {
                                 losing_captures.push((mv, MoveScore::LosingCapture(eval, history)));
@@ -240,7 +240,7 @@ impl QSearchMoveList {
                 // negative SEE was implemented based on a chesspgoramming.org page.
                 // https://www.chessprogramming.org/Quiescence_Search#Limiting_Quiescence
                 let eval = static_exchange_evaluation(board, mv);
-                if eval < Eval::ZERO {
+                if eval < 0 {
                     continue;
                 }
                 let history = searcher.data.capture_history.get(board, mv);
