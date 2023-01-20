@@ -300,6 +300,9 @@ impl<H: SearchHandler> Searcher<'_, H> {
                     let history = self.data.quiet_history.get(pos.board(), mv);
                     reduction += self.shared.search_params.lmr_reduction(i, depth, history);
                 }
+                if let MoveScore::LosingCapture(score, _) = move_score {
+                    reduction += self.shared.search_params.see_reduction(score);
+                }
                 let mut eval = -self.search_node(
                     child_node_type,
                     &child,
