@@ -55,7 +55,7 @@ define_params! {
         reduction: u8 = 1;
     }
     see = SeeParams {
-        losing_capture_reduction_threshold: SeeScore = -200;
+        losing_capture_reduction_threshold: SeeScore = -150;
         losing_capture_reduction: u8 = 2;
     }
 }
