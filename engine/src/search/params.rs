@@ -53,6 +53,10 @@ define_params! {
         min_depth: u8 = 4;
         reduction: u8 = 1;
     }
+    see = SeeParams {
+        losing_capture_reduction_threshold: i16 = -200;
+        losing_capture_reduction: u8 = 2;
+    }
 }
 
 struct Lut2d<T, const I: usize, const J: usize> {
@@ -139,5 +143,14 @@ impl SearchParamHandler {
         } else {
             0
         }
+    }
+
+    pub fn see_reduction(&self, score: Eval) -> u8 {
+        if let Some(score) = score.as_cp() {
+            if score <= self.params.see.losing_capture_reduction_threshold {
+                return self.params.see.losing_capture_reduction;
+            }
+        }
+        0
     }
 }
