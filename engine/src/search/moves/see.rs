@@ -3,16 +3,29 @@ use arrayvec::ArrayVec;
 
 pub type SeeScore = i16;
 
-fn piece_value(piece: Piece) -> SeeScore {
-    match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
-        // King capture is legal in SEE's simulation of real chess.
-        Piece::King => 20_000,
+const PIECE_MG_VALUE: &[SeeScore; Piece::NUM] = &[50, 298, 312, 326, 914, 20_000];
+const PIECE_EG_VALUE: &[SeeScore; Piece::NUM] = &[109, 296, 317, 512, 975, 20_000];
+const PIECE_VALUE_TABLE: [[SeeScore; Piece::NUM]; 25] = {
+    let mut table = [[0; Piece::NUM]; 25];
+    let mut phase = 0;
+    while phase < 25 {
+        let mut piece = 0;
+        while piece < Piece::NUM {
+            let mg = PIECE_MG_VALUE[piece];
+            let eg = PIECE_EG_VALUE[piece];
+            table[phase][piece] = ((mg as i32 * (24 - phase) as i32 + eg as i32) / 24) as SeeScore;
+            piece += 1;
+        }
+        phase += 1;
     }
+    table
+};
+
+fn phase_index(board: &Board) -> usize {
+    use Piece::*;
+
+    let c = |p| board.pieces(p).len();
+    24u32.saturating_sub(c(Knight) * 1 + c(Bishop) * 1 + c(Rook) * 2 + c(Queen) * 4) as usize
 }
 
 // CITE: Static exchange evaluation.
@@ -20,6 +33,8 @@ fn piece_value(piece: Piece) -> SeeScore {
 pub fn static_exchange_evaluation(board: &Board, capture: Move) -> SeeScore {
     use Piece::*;
 
+    let phase = phase_index(board);
+    let piece_value = |p| PIECE_VALUE_TABLE[phase][p as usize];
     let target_sq = capture.to;
     let initial_capture = board.piece_on(target_sq).unwrap();
     let initial_color = board.side_to_move();
