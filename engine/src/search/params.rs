@@ -1,7 +1,7 @@
 use crate::eval::Eval;
 
 use super::window::Window;
-use super::moves::SeeScore;
+use super::moves::{SeeScore, MoveScore};
 
 macro_rules! define_params {
     ($($name:ident = $params_name:ident {
@@ -33,6 +33,7 @@ define_params! {
         base_reduction: f32 = 0.007;
         div: f32 = 2.792;
         history_reduction_div: i32 = 210;
+        killer_reduction_damping: i32 = 1;
     }
     nmp = NmpParams {
         base_reduction: u8 = 3;
@@ -99,9 +100,12 @@ impl SearchParamHandler {
         self.params.lmr.min_depth
     }
 
-    pub fn lmr_reduction(&self, move_index: usize, depth: u8, history: i32) -> u8 {
+    pub fn lmr_reduction(&self, move_index: usize, depth: u8, history: i32, score: MoveScore) -> u8 {
         let mut reduction = self.lmr_lut.get(depth as usize, move_index) as i32;
         reduction -= history / self.params.lmr.history_reduction_div;
+        if matches!(score, MoveScore::Killer) {
+            reduction -= self.params.lmr.killer_reduction_damping;
+        }
         reduction.max(0) as u8
     }
 
