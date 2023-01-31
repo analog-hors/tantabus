@@ -38,7 +38,7 @@ struct Handler {
 }
 
 impl SearchHandler for Handler {
-    fn stop_search(&self) -> bool {
+    fn stop_search(&self, _nodes: u64) -> bool {
         if let Some(result) = &self.prev_result {
             result.depth >= self.min_depth && result.nodes >= self.min_nodes
         } else {
