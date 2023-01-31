@@ -42,7 +42,7 @@ struct BenchHandler {
 }
 
 impl SearchHandler for BenchHandler {
-    fn stop_search(&self) -> bool {
+    fn stop_search(&self, _nodes: u64) -> bool {
         self.prev_result.as_ref().map(|r| r.depth >= DEPTH).unwrap_or_default()
     }
 

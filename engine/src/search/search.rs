@@ -155,7 +155,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let init_window = window;
 
-            if self.handler.stop_search() {
+            if self.handler.stop_search(self.stats.nodes) {
                 return Err(());
             }
 
