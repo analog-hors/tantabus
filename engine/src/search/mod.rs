@@ -23,13 +23,13 @@ pub use cache::{CacheTable, CacheData};
 use position::Position;
 
 pub trait SearchHandler {
-    fn stop_search(&self) -> bool;
+    fn stop_search(&self, nodes: u64) -> bool;
     fn new_result(&mut self, result: SearchResult);
 }
 
 impl<H: SearchHandler, R: std::ops::DerefMut<Target=H>> SearchHandler for R {
-    fn stop_search(&self) -> bool {
-        (**self).stop_search()
+    fn stop_search(&self, nodes: u64) -> bool {
+        (**self).stop_search(nodes)
     }
 
     fn new_result(&mut self, search_result: SearchResult) {
@@ -53,7 +53,7 @@ struct WorkerHandler<'w> {
 }
 
 impl SearchHandler for WorkerHandler<'_> {
-    fn stop_search(&self) -> bool {
+    fn stop_search(&self, _nodes: u64) -> bool {
         self.terminate.load(Ordering::Acquire)
     }
 

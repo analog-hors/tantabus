@@ -33,9 +33,12 @@ struct UciHandler {
 }
 
 impl SearchHandler for UciHandler {
-    fn stop_search(&self) -> bool {
-        self.time_left < self.last_update.elapsed() ||
-        self.search_terminator.load(Ordering::Acquire)
+    fn stop_search(&self, nodes: u64) -> bool {
+        if nodes % 1024 != 0 {
+            return false;
+        }
+
+        self.time_left < self.last_update.elapsed() || self.search_terminator.load(Ordering::Acquire)
     }
 
     fn new_result(&mut self, mut result: SearchResult) {
