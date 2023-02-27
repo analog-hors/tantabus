@@ -60,7 +60,8 @@ pub struct Searcher<'s, H> {
     shared: &'s SearchSharedState,
     pub data: &'s mut SearchData,
     search_result: Option<Move>,
-    stats: SearchStats
+    stats: SearchStats,
+    allow_abort: bool
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +78,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
         data: &mut SearchData,
         pos: &Position,
         depth: u8,
+        allow_abort: bool,
         prev_eval: Option<Eval>
     ) -> (Result<SearcherResult, ()>, SearchStats) {
         let mut searcher = Searcher {
@@ -85,6 +87,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
             data,
             search_result: None,
             stats: SearchStats::default(),
+            allow_abort
         };
 
         let mut windows = [25].iter().copied().map(Eval::cp);
@@ -155,7 +158,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
             let init_window = window;
 
-            if self.handler.stop_search(self.stats.nodes) {
+            if self.allow_abort && self.handler.stop_search(self.stats.nodes) {
                 return Err(());
             }
 

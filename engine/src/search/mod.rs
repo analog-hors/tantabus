@@ -138,6 +138,7 @@ impl<H: SearchHandler> Engine<H> {
                             search_data,
                             pos,
                             depth,
+                            true,
                             prev_eval
                         )
                     }));
@@ -149,6 +150,7 @@ impl<H: SearchHandler> Engine<H> {
                     main_data,
                     &self.pos,
                     depth,
+                    depth > 1,
                     prev_eval
                 );
                 terminate_workers.store(true, Ordering::Release);
