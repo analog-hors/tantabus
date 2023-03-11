@@ -332,7 +332,7 @@ impl<H: SearchHandler> Searcher<'_, H> {
 
                 window.narrow_alpha(eval);
                 if window.empty() {
-                    if is_quiet {
+                    if is_quiet && !in_check && !gives_check {
                         // CITE: Killer moves.
                         // https://www.chessprogramming.org/Killer_Heuristic
                         let killers = &mut self.data.killers[ply_index as usize];
