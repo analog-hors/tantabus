@@ -19,6 +19,7 @@ pub enum MoveScore {
     UnderPromotion,
     LosingCapture(SeeScore, i32),
     Quiet(i32),
+    QueenPromo,
     Killer,
     Capture(SeeScore, i32),
     Pv
@@ -31,6 +32,7 @@ enum MoveGenStage {
     Pv,
     Captures,
     Killers,
+    QueenPromo,
     Quiets,
     LosingCaptures,
     UnderPromotions,
@@ -70,6 +72,7 @@ pub struct MoveList<'b> {
     killers: Option<Partition>,
     quiets: Option<Partition>,
     losing_captures: Option<Partition>,
+    queen_promos: Option<Partition>,
     underpromos: Option<Partition>
 }
 
@@ -90,6 +93,7 @@ impl<'b> MoveList<'b> {
             killers: None,
             quiets: None,
             losing_captures: None,
+            queen_promos: None,
             underpromos: None
         }
     }
@@ -173,26 +177,43 @@ impl<'b> MoveList<'b> {
         if self.stage == MoveGenStage::Killers {
             if self.killers.is_none() {
                 let mut killers = ArrayVec::<_, KILLER_ENTRIES>::new();
+                let mut queen_promos = ArrayVec::<_, {8 * 3}>::new();
                 let mut underpromos = ArrayVec::<_, {8 * 3}>::new();
                 self.quiets = Some(self.move_list.new_partition(|mut quiets| {
                     for &moves in &self.dense_quiets {
                         for mv in moves {
                             if self.data.killers.contains(&mv) {
                                 killers.push((mv, MoveScore::Killer));
-                            } else if matches!(mv.promotion, None | Some(Piece::Queen)) {
-                                let history = searcher.data.quiet_history.get(self.data.board, mv);
-                                quiets.push((mv, MoveScore::Quiet(history)));
                             } else {
-                                underpromos.push((mv, MoveScore::UnderPromotion));
+                                match mv.promotion {
+                                    None => {
+                                        let history = searcher.data.quiet_history.get(self.data.board, mv);
+                                        quiets.push((mv, MoveScore::Quiet(history)));
+                                    }
+                                    Some(Piece::Queen) => {
+                                        queen_promos.push((mv, MoveScore::QueenPromo));
+                                    }
+                                    Some(_) => {
+                                        underpromos.push((mv, MoveScore::UnderPromotion));
+                                    }
+                                }
                             }
                         }
                     }
                 }));
                 self.killers = Some(self.move_list.new_partition_from_slice(&killers));
                 self.underpromos = Some(self.move_list.new_partition_from_slice(&underpromos));
+                self.queen_promos = Some(self.move_list.new_partition_from_slice(&queen_promos));
             }
             let killers = self.killers.as_mut().unwrap();
             if let Some(&result) = self.move_list.yield_from_partition(killers) {
+                return Some(result);
+            }
+            self.stage = MoveGenStage::QueenPromo;
+        }
+        if self.stage == MoveGenStage::QueenPromo {
+            let queen_promos = self.queen_promos.as_mut().unwrap();
+            if let Some(&result) = self.move_list.yield_from_partition(queen_promos) {
                 return Some(result);
             }
             self.stage = MoveGenStage::Quiets;
