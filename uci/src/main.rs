@@ -128,7 +128,7 @@ fn parse_message(msg: &str) -> UciMessage {
                         if let Some(p) = chars.next() {
                             Some(match p {
                                 'q' => UciPiece::Queen,
-                                'k' => UciPiece::Knight,
+                                'n' => UciPiece::Knight,
                                 'r' => UciPiece::Rook,
                                 'b' => UciPiece::Bishop,
                                 _ => return None
