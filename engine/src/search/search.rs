@@ -215,21 +215,14 @@ impl<H: SearchHandler> Searcher<'_, H> {
                 }
             }
 
-            let our_pieces = pos.board().colors(pos.board().side_to_move());
-            let sliding_pieces =
-                pos.board().pieces(Piece::Rook) |
-                pos.board().pieces(Piece::Bishop) |
-                pos.board().pieces(Piece::Queen);
-
             let mut best_move = None;
             let mut best_eval = Eval::MIN;
             // CITE: Null move pruning.
             // The idea for doing it only when static_eval >= beta was
             // first suggested to me by the Black Marlin author.
             // https://www.chessprogramming.org/Null_Move_Pruning
-            let do_nmp = static_eval >= window.beta
-                && !(our_pieces & sliding_pieces).is_empty();
-            if node != Node::Root && do_nmp {
+            let do_nmp = static_eval >= window.beta;
+            if !matches!(node, Node::Pv | Node::Root) && do_nmp {
                 if let Some(child) = pos.null_move() {
                     let mut window = window.null_window_beta();
                     let reduction = self.shared.search_params.nmp_reduction(depth, static_eval, window);
