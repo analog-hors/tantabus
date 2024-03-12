@@ -39,7 +39,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 ### Evaluation
 - HCE
     - No longer exists, used to train NNUE
-    - [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://cdn.discordapp.com/attachments/936829036104142848/1014793028042510346/lichess-big3-resolved.7z)
+    - [Automatically tuned with currently private tuner on the `lichess-big3-resolved` dataset](https://web.archive.org/web/20230317131040if_/https://cdn.discordapp.com/attachments/936829036104142848/1014793028042510346/lichess-big3-resolved.7z)
     - King relative symmetric piece-square tables
         - Dedicated passed pawn tables
     - Mobility evaluation (simple pseudo-legal counting)
@@ -51,7 +51,7 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 - NNUE
     - Simple (768 -> 128)x2 -> 1 network architecture
     - Data generated using custom program
-    - Network trained using [MarlinFlow](https://github.com/dsekercioglu/marlinflow)
+    - Network trained using [MarlinFlow](https://github.com/jnlt3/marlinflow)
     - Two halves ordered by side to move and side not to move
     - Network quantized into integers for inference
     - Inference accelerated by custom SIMD code
@@ -63,12 +63,12 @@ Play me on lichess: https://lichess.org/@/TantabusEngine.
 ## Thanks
 A (potentially incomplete) list of very useful resources:
 - [The CPW wiki](https://www.chessprogramming.org/) - Extremely useful site for chess programming
-- [the NNUE document](https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md) - Extremely useful for NNUE
+- [the NNUE document](https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md) - Extremely useful for NNUE
 
 Many engines have been very useful resources in the development of Tantabus.<br>
 A (potentially incomplete) list of citations is listed in the code, annotated with `// CITE` comments.<br>
 A (potentially incomplete) list of special thanks in no particular order:
-- [Pali (Black Marlin author)](https://github.com/dsekercioglu/blackmarlin), for assisting me with various things during the development of Tantabus on top of being like, cool and stuff.
+- [Pali (Black Marlin author)](https://github.com/jnlt3/blackmarlin), for assisting me with various things during the development of Tantabus on top of being like, cool and stuff.
 - [Jay (Berserk author)](https://github.com/jhonnold/berserk) for having hosted the OpenBench instance that Tantabus developed on, as well as suggesting various improvements.
 - [Andrew (OpenBench and Ethereal author)](https://github.com/AndyGrant/Ethereal) for OpenBench. OpenBench has been an immensely helpful tool for engine development. Ethereal is also a very influential engine.
 - MinusKelvin ([Cold Clear](https://github.com/MinusKelvin/cold-clear) and [Frozenight](https://github.com/MinusKelvin/frozenight) author), for being like, really cool and stuff.
