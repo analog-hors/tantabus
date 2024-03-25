@@ -5,7 +5,7 @@ mod layers;
 use self::layers::*;
 
 const FEATURES: usize = 768;
-const FT_OUT: usize = 256;
+const FT_OUT: usize = 32;
 const L1_OUT: usize = 1;
 
 const ACTIVATION_RANGE: i8 = 127;
